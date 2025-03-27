@@ -1,0 +1,9 @@
+# Whole folders
+venv/
+__pycache__/
+
+# Specific files
+schema.xsd
+secret_keys.py
+taks.xlsx
+*.zip
