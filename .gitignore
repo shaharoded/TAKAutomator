@@ -6,5 +6,5 @@ TAKS/
 # Specific files
 schema.xsd
 secret_keys.py
-taks.xlsx
+tak_registry.json
 *.zip

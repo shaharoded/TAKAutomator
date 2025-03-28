@@ -33,7 +33,6 @@ class LLMAgent:
         """
         encoding = TOKENIZER.encode(text)
         token_count = len(encoding)
-        print(f"[Info]: Number of input tokens are: {token_count}")
         return token_count
 
 

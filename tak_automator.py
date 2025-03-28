@@ -1,6 +1,7 @@
 import os
 from lxml import etree
 import pandas as pd
+import json
 
 # Local Code
 from Config.validator_config import ValidatorConfig
@@ -18,8 +19,20 @@ class TAKAutomator:
         self.excel_validator = Excelok(self.excel_path)
         self.tak_validator = TAKok(self.schema_path, self.excel_path)
         self.llm = LLMAgent()
+        self.registry_path = "tak_registry.json"
+        self.registry = self._load_registry()
+    
+    def _load_registry(self):
+        if os.path.exists(self.registry_path):
+            with open(self.registry_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {}
 
-    def run(self):
+    def _save_registry(self):
+        with open(self.registry_path, 'w', encoding='utf-8') as f:
+            json.dump(self.registry, f, indent=2)
+
+    def run(self, test_mode=False):
         valid, msg = self.excel_validator.validate()
         if not valid:
             print(f"[ERROR]: Excel validation failed: {msg}")
@@ -44,6 +57,10 @@ class TAKAutomator:
                 tak_name = row['TAK_NAME']
                 prev_outputs = []
                 feedback = ""
+                
+                if tak_id in self.registry:
+                    print(f"[SKIP]: TAK {tak_id} already generated as {self.registry[tak_id]}")
+                    continue
 
                 for i in range(self.max_iters):
                     prompt = self._build_prompt(sheet, row, feedback, prev_outputs)
@@ -51,17 +68,25 @@ class TAKAutomator:
                     prev_outputs.append(tak_text)
 
                     valid, message = self.tak_validator.validate(tak_text, tak_id)
+                    print(f"[GENERATED TAK VALIDATION MESSAGE]: {message}")
                     if valid:
                         filename = f"{sheet.upper()}_{tak_name}.xml"
                         self._write_file(sheet_folder, filename, tak_text)
+                        self.registry[tak_id] = filename
+                        self._save_registry()
                         break
                     elif i == self.max_iters - 1 or tak_text in prev_outputs[:-1]:
                         filename = f"{sheet.upper()}_INVALID_{tak_name}.xml"
                         self._write_file(sheet_folder, filename, tak_text)
+                        self.registry[tak_id] = filename
+                        self._save_registry()
                         print(f"[WARNING]: Saved invalid TAK for manual check: {filename}. Errors: {message}")
                     else:
                         feedback = message
-                return "This is just a test"
+                    
+                if test_mode:
+                    print("[TEST MODE]: Exiting after first TAK. Bye.")
+                    return
 
     def _write_file(self, folder: str, filename: str, content: str):
         with open(os.path.join(folder, filename), 'w', encoding='utf-8') as f:
@@ -110,4 +135,4 @@ class TAKAutomator:
 
 if __name__ == "__main__":
     automator = TAKAutomator(max_iters=AgentConfig.MAX_ITERS)
-    automator.run()
+    automator.run(test_mode=True)

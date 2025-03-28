@@ -90,9 +90,9 @@ class TAKok:
 
         if sheet == "raw_concepts":
             typ = row.get("TYPE", "").lower()
-            if typ == "raw-numeric" and doc.find(".//numeric-allowed-values") is None:
+            if typ == "numeric-raw-concept" and doc.find(".//numeric-allowed-values") is None:
                 issues.append("Missing <numeric-allowed-values> for raw-numeric concept.")
-            elif typ == "raw-nominal" and doc.find(".//nominal-allowed-values") is None:
+            elif typ == "nominal-raw-concept" and doc.find(".//nominal-allowed-values") is None:
                 issues.append("Missing <nominal-allowed-values> for raw-nominal concept.")
 
         elif sheet == "states":
