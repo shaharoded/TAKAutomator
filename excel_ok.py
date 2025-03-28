@@ -7,7 +7,17 @@ from Config.validator_config import ValidatorConfig
 
 
 class Excelok:
+    """
+    Validates the structural and logical consistency of a TAK definition Excel file
+    used to generate valid TAK XML files.
 
+    This includes checking:
+      - Required sheet existence and required columns
+      - ID uniqueness and non-emptiness
+      - Specific column dependencies based on the concept type (numeric, nominal, etc.)
+      - Valid JSON structure for MAPPING and STATE_LABELS in states
+      - Valid DERIVED_FROM or ATTRIBUTES relationships across sheets
+    """
     def __init__(self, excel_path: str):
         self.excel_path = excel_path
         try:
@@ -17,6 +27,7 @@ class Excelok:
             raise RuntimeError(f"Failed to load Excel file: {e}")
 
     def validate(self) -> Tuple[bool, str]:
+        """Top-level validation entrypoint that applies specific sheet validations."""
         errors = []
 
         # Check required sheets exist
@@ -48,6 +59,7 @@ class Excelok:
         return True, "Excel file is valid."
 
     def validate_raw_concepts(self, df: pd.DataFrame) -> Tuple[bool, str]:
+        """Validate structure and required values for raw_concepts sheet."""
         # Basic required columns for raw_concepts
         required_cols = ["ID", "TAK_NAME", "TYPE", "GOOD_BEFORE", "GOOD_BEFORE_UNIT", "GOOD_AFTER", "GOOD_AFTER_UNIT",
                          "downward-hereditary", "forward", "backward", "solid", "concatenable", "gestalt"]
@@ -73,6 +85,7 @@ class Excelok:
         return True, "Raw concepts are valid."
 
     def validate_states(self, df: pd.DataFrame) -> Tuple[bool, str]:
+        """Validate structure and content for states sheet."""
         required_cols = ["ID", "TAK_NAME", "DERIVED_FROM", "Mapping_Rank_Selection_Criteria", 
                          "MAPPING", "STATE_LABELS", "GOOD_BEFORE", "GOOD_BEFORE_UNIT", "GOOD_AFTER", "GOOD_AFTER_UNIT",
                          "downward-hereditary",	"forward",	"backward",	"solid", "concatenable", "gestalt"]
@@ -125,6 +138,7 @@ class Excelok:
         return True, "States are valid."
 
     def validate_events(self, df: pd.DataFrame) -> Tuple[bool, str]:
+        """Validate structure and content of events sheet."""
         required_cols = ["ID", "TAK_NAME", "ATTRIBUTES"]
         missing = [col for col in required_cols if col not in df.columns]
         if missing:

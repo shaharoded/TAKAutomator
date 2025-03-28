@@ -12,10 +12,20 @@ from llm_agent import LLMAgent
 
 
 class TAKAutomator:
-    def __init__(self, max_iters: int):
+    """
+    Automates the generation and validation of TAK (Temporal Abstraction Knowledge) XML files.
+    
+    This class uses an LLM to generate TAKs from structured Excel data, validates them using
+    a schema and business rules, and writes the resulting XML files to disk. It avoids regenerating
+    already processed TAKs using a local registry file.
+    """
+    def __init__(self):
+        """
+        Initialize the TAKAutomator with maximum LLM retry attempts.
+        """
         self.schema_path = ValidatorConfig.SCHEMA_PATH
         self.excel_path = ValidatorConfig.EXCEL_PATH
-        self.max_iters = max_iters
+        self.max_iters = AgentConfig.MAX_ITERS
         self.excel_validator = Excelok(self.excel_path)
         self.tak_validator = TAKok(self.schema_path, self.excel_path)
         self.llm = LLMAgent()
@@ -23,16 +33,28 @@ class TAKAutomator:
         self.registry = self._load_registry()
     
     def _load_registry(self):
+        """
+        Load the registry of previously created TAKs to prevent duplication.
+        """
         if os.path.exists(self.registry_path):
             with open(self.registry_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         return {}
 
     def _save_registry(self):
+        """
+        Save the TAK registry to disk.
+        """
         with open(self.registry_path, 'w', encoding='utf-8') as f:
             json.dump(self.registry, f, indent=2)
 
     def run(self, test_mode=False):
+        """
+        Main workflow to process the Excel file and create TAK files.
+        
+        Args:
+            test_mode (bool): If True, only processes a single TAK for testing purposes.
+        """
         valid, msg = self.excel_validator.validate()
         if not valid:
             print(f"[ERROR]: Excel validation failed: {msg}")
@@ -89,13 +111,30 @@ class TAKAutomator:
                     return
 
     def _write_file(self, folder: str, filename: str, content: str):
+        """
+        Save a TAK file to disk.
+
+        Args:
+            folder (str): Target directory.
+            filename (str): File name.
+            content (str): XML content to write.
+        """
         with open(os.path.join(folder, filename), 'w', encoding='utf-8') as f:
             f.write(content)
             
     def _extract_schema_for_type(self, schema_path: str, concept_type: str) -> str:
         """
-        Extract only the schema portion relevant to a given concept type (e.g., 'state', 'numeric-raw-concept').
-        Returns it as a string (XML).
+        Extract only the relevant part of the schema corresponding to the TAK type.
+
+        Args:
+            schema_path (str): Path to the schema file.
+            concept_type (str): TAK concept type (e.g. 'state', 'numeric-raw-concept').
+
+        Returns:
+            str: XML string of the relevant schema section.
+
+        Raises:
+            ValueError: If the concept type is not found in the schema.
         """
         tree = etree.parse(schema_path)
         root = tree.getroot()
@@ -107,6 +146,18 @@ class TAKAutomator:
         raise ValueError(f"Concept type '{concept_type}' not found in schema.")
 
     def _build_prompt(self, sheet: str, row: pd.Series, feedback: str, previous: list) -> str:
+        """
+        Build a complete prompt for the LLM based on Excel row and prior context.
+
+        Args:
+            sheet (str): Current sheet name (e.g., 'raw_concepts').
+            row (pd.Series): The row containing TAK data.
+            feedback (str): Feedback from previous LLM attempts.
+            previous (list): List of previous TAK generations.
+
+        Returns:
+            str: A full prompt string to be sent to the LLM.
+        """
         concept_type = sheet if sheet in ["states", "events"] else row.get("TYPE", "").strip()
         schema_fragment = self._extract_schema_for_type(ValidatorConfig.SCHEMA_PATH, concept_type)
         
@@ -134,5 +185,5 @@ class TAKAutomator:
     
 
 if __name__ == "__main__":
-    automator = TAKAutomator(max_iters=AgentConfig.MAX_ITERS)
+    automator = TAKAutomator()
     automator.run(test_mode=True)
