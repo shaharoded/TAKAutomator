@@ -42,64 +42,72 @@ class TAKok:
         except Exception as e:
             raise RuntimeError(f"Failed to load Excel from {excel_path}: {e}")
 
-    def validate(self, tak_text: str) -> Tuple[bool, str]:
+    def validate(self, tak_text: str, tak_id: str = None) -> Tuple[bool, str]:
         """
         Validate a TAK XML string against both the schema and business rules.
 
         Args:
             tak_text (str): The TAK XML content as a string
+            tak_id (str, optional): TAK identifier. If None, will extract from XML.
 
         Returns:
-            Tuple[bool, str]: (True, "Valid") if valid, otherwise (False, reason)
+            Tuple[bool, str]: 
+                - (True, "Valid") if valid
+                - (False, "Critical error: ...") for structural issues that should break the loop
+                - (False, "Business issues: ...") for fixable problems LLM can iterate on
         """
+        # === CRITICAL: Invalid XML ===
         try:
             doc = etree.fromstring(tak_text.encode('utf-8'))
         except etree.XMLSyntaxError as e:
-            return False, f"XML syntax error: {e}"
+            return False, f"Critical error: XML syntax error: {e}"
 
+        # === CRITICAL: Schema invalid ===
         if not self.schema.validate(doc):
             errors = [str(error) for error in self.schema.error_log]
-            return False, "Schema validation errors: " + "; ".join(errors)
+            return False, "Critical error: Schema validation errors: " + "; ".join(errors)
 
+        # === CRITICAL: Type or ID mismatch ===
         root_tag = doc.tag
-        tak_id = doc.get("id")
-        sheet = self._get_sheet_for_tag(root_tag)
+        tak_id_from_xml = doc.get("id")
+        tak_id = tak_id or tak_id_from_xml
 
+        if tak_id != tak_id_from_xml:
+            return False, f"Critical error: TAK ID mismatch. Expected={tak_id}, but got={tak_id_from_xml} in XML."
+
+        sheet = self._get_sheet_for_tag(root_tag)
         if sheet is None:
-            return False, f"Unrecognized TAK type with root tag <{root_tag}>."
+            return False, f"Critical error: Unrecognized TAK type with root tag <{root_tag}>."
 
         df = self.excel[sheet]
         row = df[df['ID'] == tak_id]
         if row.empty:
-            return False, f"No matching ID '{tak_id}' found in sheet '{sheet}'."
+            return False, f"Critical error: No matching ID '{tak_id}' found in sheet '{sheet}'."
 
+        # === BUSINESS LOGIC VALIDATION ===
         row = row.iloc[0]
-        errors = []
+        issues = []
 
-        # Business Logic Checks
         if sheet == "raw_concepts":
             typ = row.get("TYPE", "").lower()
-            if typ == "raw-numeric":
-                if doc.find(".//numeric-allowed-values") is None:
-                    errors.append("Missing <numeric-allowed-values> for raw-numeric concept.")
-            elif typ == "raw-nominal":
-                if doc.find(".//nominal-allowed-values") is None:
-                    errors.append("Missing <nominal-allowed-values> for raw-nominal concept.")
+            if typ == "raw-numeric" and doc.find(".//numeric-allowed-values") is None:
+                issues.append("Missing <numeric-allowed-values> for raw-numeric concept.")
+            elif typ == "raw-nominal" and doc.find(".//nominal-allowed-values") is None:
+                issues.append("Missing <nominal-allowed-values> for raw-nominal concept.")
 
         elif sheet == "states":
-            derived_from = row.get("DERIVED_FROM")
             if doc.find(".//derived-from") is None:
-                errors.append("Missing <derived-from> block in state.")
+                issues.append("Missing <derived-from> block in state.")
             if pd.notna(row.get("MAPPING")) and row.get("MAPPING").strip():
                 if doc.find(".//mapping-function") is None:
-                    errors.append("Missing <mapping-function> element despite MAPPING specified in Excel.")
+                    issues.append("Missing <mapping-function> element despite MAPPING specified in Excel.")
 
         elif sheet == "events":
             if doc.find(".//attributes") is None:
-                errors.append("Missing <attributes> block in event.")
+                issues.append("Missing <attributes> block in event.")
 
-        if errors:
-            return False, "; ".join(errors)
+        if issues:
+            return False, "Business issues: " + "; ".join(issues)
 
         return True, "Valid"
 

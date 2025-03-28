@@ -111,7 +111,7 @@ class Excelok:
         # If none of the derived IDs is raw-boolean, then MAPPING and STATE_LABELS must be valid JSON lists of equal length.
         for idx, row in df.iterrows():
             derived_ids = [d.strip() for d in row["DERIVED_FROM"].split(",") if d.strip()]
-            skip_mapping = any((d in raw_types and raw_types[d] == "raw-boolean") for d in derived_ids)
+            skip_mapping = any((d in raw_types and raw_types[d] == "nominal-raw-concept") for d in derived_ids)
             if not skip_mapping:
                 try:
                     bins = json.loads(row["MAPPING"].strip())

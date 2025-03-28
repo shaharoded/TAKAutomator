@@ -1,5 +1,6 @@
 class AgentConfig:
     """Configuration settings for JDReader module"""
+    MAX_ITERS = 3
     
     # LLM Configurations
     OPENAI_ENGINE = 'gpt-4o-mini'

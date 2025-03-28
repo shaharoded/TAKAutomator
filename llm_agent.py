@@ -60,13 +60,6 @@ class LLMAgent:
                 {"role": "user", "content": input_text}
             ]
         
-        # Create response format parameter if specified
-        response_format_param = None
-        if self.response_format == 'json':
-            response_format_param = {"type": "json_object"}
-        elif self.response_format != 'text':
-            response_format_param = {"type": self.response_format}
-        
         # Build the API call parameters
         api_params = {
             "model": self.engine,
@@ -74,13 +67,17 @@ class LLMAgent:
             "temperature": self.temperature
         }
         
-        # Add response format if specified
-        if response_format_param:
-            api_params["response_format"] = response_format_param
+        # Count input tokens
+        total_input = "\n".join([msg["content"] for msg in messages])
+        input_token_count = self.count_tokens(total_input)
         
         # Make the API call
         response = client.chat.completions.create(**api_params)
         raw_response = response.choices[0].message.content
+        
+        # Count output tokens
+        output_token_count = self.count_tokens(raw_response)
+        print(f"[Info]: LLM call complete. Input tokens: {input_token_count}, Output tokens: {output_token_count}")
         
         # Return raw text for non-JSON responses
         return raw_response

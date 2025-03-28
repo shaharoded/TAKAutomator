@@ -1,6 +1,7 @@
 # Whole folders
 venv/
 __pycache__/
+TAKS/
 
 # Specific files
 schema.xsd

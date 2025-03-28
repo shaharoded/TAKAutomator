@@ -4,6 +4,7 @@ import pandas as pd
 
 # Local Code
 from Config.validator_config import ValidatorConfig
+from Config.agent_config import AgentConfig
 from tak_ok import TAKok
 from excel_ok import Excelok
 from llm_agent import LLMAgent
@@ -108,5 +109,5 @@ class TAKAutomator:
     
 
 if __name__ == "__main__":
-    automator = TAKAutomator(max_iters=3)
+    automator = TAKAutomator(max_iters=AgentConfig.MAX_ITERS)
     automator.run()
