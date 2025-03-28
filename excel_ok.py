@@ -62,7 +62,9 @@ class Excelok:
         """Validate structure and required values for raw_concepts sheet."""
         # Basic required columns for raw_concepts
         required_cols = ["ID", "TAK_NAME", "TYPE", "GOOD_BEFORE", "GOOD_BEFORE_UNIT", "GOOD_AFTER", "GOOD_AFTER_UNIT",
-                         "downward-hereditary", "forward", "backward", "solid", "concatenable", "gestalt"]
+                         "downward-hereditary", "forward", "backward", "solid", "concatenable", "gestalt", 
+                         "OUTPUT_TYPE",	"GLOBAL_GRANULARITY",	"PERSISTENCE_BEHAVIOR"
+                         ]
         missing = [col for col in required_cols if col not in df.columns]
         if missing:
             return False, f"Missing columns: {', '.join(missing)}"
@@ -75,13 +77,13 @@ class Excelok:
 
         for idx, row in df.iterrows():
             typ = row["TYPE"].strip().lower() if pd.notna(row["TYPE"]) else ""
-            if typ == "raw-numeric":
+            if typ == "numeric-raw-concept":
                 for col in ["MIN_VALUE", "MAX_VALUE", "UNIT", "SCALE"]:
                     if col not in df.columns or pd.isna(row[col]) or row[col].strip() == "":
-                        return False, f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for raw-numeric."
-            elif typ == "raw-nominal":
+                        return False, f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for numeric-raw-concept."
+            elif typ == "nominal-raw-concept":
                 if "NOMINAL_VALUES" not in df.columns or pd.isna(row["NOMINAL_VALUES"]) or row["NOMINAL_VALUES"].strip() == "":
-                    return False, f"Row {idx+2} (ID={row['ID']}): 'NOMINAL_VALUES' must be specified for raw-nominal concept."
+                    return False, f"Row {idx+2} (ID={row['ID']}): 'NOMINAL_VALUES' must be specified for nominal-raw-concept."
         return True, "Raw concepts are valid."
 
     def validate_states(self, df: pd.DataFrame) -> Tuple[bool, str]:
