@@ -162,11 +162,14 @@ class TAKAutomator:
         schema_fragment = self._extract_schema_for_type(ValidatorConfig.SCHEMA_PATH, concept_type)
         
         parts = [
-            f"You are creating a TAK file of type '{sheet}', named '{row['TAK_NAME']}' with ID '{row['ID']}'.",
-            f"Please use the official TAK schema and structure it accordingly. Here is the relevant schema section:",
+            f"You are creating a TAK file of type '{concept_type}', named '{row['TAK_NAME']}' with ID '{row['ID']}'.",
+            "Please follow this XML schema fragment to ensure the structure is valid:",
             schema_fragment,
-            "\nRefer to the following business logic requirements and structure accordingly:",
-            row.to_json()
+            "Below is the Excel row defining all business logic fields. You must reflect this information in the XML accurately:",
+            row.to_json(),
+            "Ensure all mandatory blocks from the schema are present, even if empty. For example: <categories>, <synonyms>, <clippers>, etc.",
+            "For nominal-raw-concept: include <nominal-allowed-values> with nested <persistence> and <values> blocks. Wrap each allowed value in <nominal-allowed-value>.",
+            "For persistence: include both global and local persistence with their required attributes (e.g., granularity, behavior)."
         ]
 
         # Add schema and business logic instructions placeholder

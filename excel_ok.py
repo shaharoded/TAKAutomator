@@ -61,9 +61,9 @@ class Excelok:
     def validate_raw_concepts(self, df: pd.DataFrame) -> Tuple[bool, str]:
         """Validate structure and required values for raw_concepts sheet."""
         # Basic required columns for raw_concepts
-        required_cols = ["ID", "TAK_NAME", "TYPE", "GOOD_BEFORE", "GOOD_BEFORE_UNIT", "GOOD_AFTER", "GOOD_AFTER_UNIT",
+        required_cols = ["ID", "TAK_NAME", "TYPE", "GOOD_BEFORE", "GOOD_BEFORE_GRANULARITY", "GOOD_AFTER", "GOOD_AFTER_GRANULARITY",
                          "downward-hereditary", "forward", "backward", "solid", "concatenable", "gestalt", 
-                         "OUTPUT_TYPE",	"GLOBAL_GRANULARITY",	"PERSISTENCE_BEHAVIOR"
+                         "OUTPUT_TYPE",	"GLOBAL_GRANULARITY",	"GLOBAL_BEHAVIOUR"
                          ]
         missing = [col for col in required_cols if col not in df.columns]
         if missing:
@@ -89,7 +89,7 @@ class Excelok:
     def validate_states(self, df: pd.DataFrame) -> Tuple[bool, str]:
         """Validate structure and content for states sheet."""
         required_cols = ["ID", "TAK_NAME", "DERIVED_FROM", "Mapping_Rank_Selection_Criteria", 
-                         "MAPPING", "STATE_LABELS", "GOOD_BEFORE", "GOOD_BEFORE_UNIT", "GOOD_AFTER", "GOOD_AFTER_UNIT",
+                         "MAPPING", "STATE_LABELS", "GOOD_BEFORE", "GOOD_BEFORE_GRANULARITY", "GOOD_AFTER", "GOOD_AFTER_GRANULARITY",
                          "downward-hereditary",	"forward",	"backward",	"solid", "concatenable", "gestalt"]
         missing = [col for col in required_cols if col not in df.columns]
         if missing:
