@@ -1,5 +1,5 @@
 from lxml import etree
-from typing import Tuple
+from typing import Tuple, List
 import pandas as pd
 
 # Local Code
@@ -101,10 +101,13 @@ class TAKok:
             if pd.notna(row.get("MAPPING")) and row.get("MAPPING").strip():
                 if doc.find(".//mapping-function") is None:
                     issues.append("Missing <mapping-function> element despite MAPPING specified in Excel.")
+                else:
+                    # NEW: Add threshold logic validation
+                    issues += self._validate_state_range_coverage(doc)
 
         elif sheet == "events":
-            if doc.find(".//attributes") is None:
-                issues.append("Missing <attributes> block in event.")
+            if doc.find(".//Attributes") is None:
+                issues.append("Missing <Attributes> block in event.")
 
         if issues:
             return False, "Business issues: " + "; ".join(issues)
@@ -125,9 +128,79 @@ class TAKok:
             "numeric-raw-concept": "raw_concepts",
             "nominal-raw-concept": "raw_concepts",
             "state": "states",
-            "event": "events"
+            "event": "events",
+            "pattern": "patterns",
+            "context": "contexts",
+            "scenario": "scenarios"
         }
         return tag_to_sheet.get(tag)
+    
+    def _validate_state_range_coverage(self, doc: etree._Element) -> List[str]:
+        """
+        Validates that the mapping-function in a state TAK has proper bin range coverage.
+        Ensures that:
+        - The first bin is a lower-bound (e.g., x < threshold1)
+        - The last bin is an upper-bound (e.g., x >= thresholdN)
+        - Intermediate bins are ranges (e.g., x >= threshold1 and x < threshold2)
+
+        Args:
+            doc (etree._Element): Parsed XML tree for the TAK
+
+        Returns:
+            List[str]: List of any range-related issues found
+        """
+        issues = []
+
+        bins = doc.findall(".//mapping-function-2-value")
+        if not bins:
+            return ["Missing <mapping-function-2-value> bins."]
+
+        for idx, bin_elem in enumerate(bins):
+            eval_tree = bin_elem.find(".//evaluation-tree")
+            if eval_tree is None:
+                issues.append(f"Bin {idx}: Missing <evaluation-tree>.")
+                continue
+
+            logic = eval_tree.find(".//logical-function")
+            comp = eval_tree.find(".//comparison-function")
+
+            if idx == 0:
+                # Expect a single comparison like x < X
+                if comp is None:
+                    issues.append(f"Bin {idx}: Expected a single <comparison-function> for lower bound.")
+                else:
+                    op = comp.get("comparison-operator", "")
+                    if op not in ("smaller", "smaller-equal"):
+                        issues.append(f"Bin {idx}: Expected 'smaller' or 'smaller-equal' but got '{op}'.")
+            elif idx == len(bins) - 1:
+                # Expect a single comparison like x >= X
+                if comp is None:
+                    issues.append(f"Bin {idx}: Expected a single <comparison-function> for upper bound.")
+                else:
+                    op = comp.get("comparison-operator", "")
+                    if op not in ("bigger", "bigger-equal"):
+                        issues.append(f"Bin {idx}: Expected 'bigger' or 'bigger-equal' but got '{op}'.")
+            else:
+                # Expect a logical AND with two valid comparisons
+                if logic is None:
+                    issues.append(f"Bin {idx}: Expected <logical-function> with two range comparisons.")
+                else:
+                    operands = logic.findall(".//operand")
+                    if len(operands) != 2:
+                        issues.append(f"Bin {idx}: Logical function must contain exactly 2 operands.")
+                        continue
+
+                    ops = []
+                    for operand in operands:
+                        cmp_node = operand.find(".//comparison-function")
+                        if cmp_node is not None:
+                            ops.append(cmp_node.get("comparison-operator", ""))
+
+                    if not any(op in ("bigger", "bigger-equal") for op in ops) or \
+                    not any(op in ("smaller", "smaller-equal") for op in ops):
+                        issues.append(f"Bin {idx}: Expected both lower and upper comparisons in logical function.")
+
+        return issues
 
 
 if __name__ == "__main__":

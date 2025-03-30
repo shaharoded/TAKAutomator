@@ -96,11 +96,12 @@ automator.run(test_mode=True)
 
 ## TO-DOs and Improvements
 
-1. ✅ Improve schema parsing for automated structure generation instead of relying on XML templates
-2. ✅ Extend support for additional TAK types:
+1. Improve schema parsing for automated structure generation instead of relying on XML templates
+2. Extend support for additional TAK types:
     - pattern
     - context
     - enrich event handling
+3. Range states still needs some work, as the LLM outputs non-covering ranges (for example, multiple `x >= thresh_i` for multiple thresholds in a row, causing the abstraction to ignore some state values). `TAKok` enforces and notify on these restrictions but the model is slow to adapt.
 
 ## Notes
 - Templates are stored under tak_templates/ and must match Excel concept types.

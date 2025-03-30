@@ -4,9 +4,12 @@
   <synonyms/>
   <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
   <Attributes>
+    <!-- Cannot be empty -->
     <Attribute-id>{Attribute1}</Attribute-id>
     <Attribute-id>{Attribute2}</Attribute-id>
+    <!-- Add more if needed -->
   </Attributes>
   <Event-Extend-Id/>
+  <!-- Optional, category names like 'Medications' for the events -->
   <Event-Types>{CommaSeparatedTypes}</Event-Types>
 </event>

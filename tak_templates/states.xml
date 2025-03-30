@@ -1,31 +1,99 @@
 <state id="{ID}" name="{TAK_NAME}" concept-type="state">
+  <!-- Add categories if relevant else <categories/> -->
   <categories>
-    <category>{Category1}</category>
-    <category>{Category2}</category>
+    <category>{Category}</category>
+    <!-- Add more if needed -->
   </categories>
   <standard-terms/>
+  <!-- Add synonyms if relevant else <synonyms/> -->
   <synonyms>
     <synonym>{Synonym}</synonym>
+    <!-- Add more if needed -->
   </synonyms>
   <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
+  
   <clippers/>
   <derived-from>
-    <derived-from-id>{DerivedConceptID}</derived-from-id>
+    <derived-from-id>{DERIVED_FROM}</derived-from-id>
   </derived-from>
   <abstraction-at-contexts/>
+
   <mapping-function rank-selection-criteria="{Mapping_Rank_Selection_Criteria}">
     <mapping-functions-to-values>
-    <!-- ordinal bin ranges are under column MAPPING, and their matched label under STATE_LABELS -->
-    <!-- values are matched like MAPPING[idx] -> STATE_LABELS[idx] -->
-      <mapping-function-2-value order="0" value="{Label1}">
+      <!-- ordinal bin ranges are under column MAPPING, and their matched label under STATE_LABELS -->
+      <!-- values are matched like MAPPING[idx] -> STATE_LABELS[idx] -->
+      <!-- 
+      Mapping operator rules:
+      1. If rank-selection-criteria="min", the XML must process bins from smallest to largest (ascending).
+        - First bin: x < threshold
+        - Middle bin/s: threshold1 <= x < threshold2 (use logical AND)
+        - Last bin: x >= threshold
+        Do NOT use multiple `>`, `>=` comparisons in sequence.
+        Each bin must be exclusive and together they should fully cover the possible values.
+
+      2. If rank-selection-criteria="max", process bins from largest to smallest (descending).
+        - First bin: x > threshold
+        - Middle bin/s: threshold1 >= x > threshold2
+        - Last bin: x <= threshold
+        Do NOT use multiple `<` , `<=` comparisons in sequence.
+        Each bin must be exclusive and together they should fully cover the possible values.
+
+      Each label in STATE_LABELS must match the bin condition from MAPPING.
+      Ranges appear like [min_val, max_val] per bin in the business logic.
+      -->
+      <mapping-function-2-value order="0" value="{STATE_LABELS[0]}">
         <evaluation-tree data-type="comparison-function">
-          <!-- comparison operators: ['bigger', 'bigger-equal', 'smaller', 'smaller-equal', 'equal', 'not-equal'] -->
-          <comparison-function comparison-operator="{operator}">
+          <comparison-function comparison-operator="smaller">
             <left data-type="concept-id-allowed-values">
               <concept-id-allowed-values id="{DERIVED_FROM}"/>
             </left>
             <right data-type="double">
-              <double>{Threshold}</double>
+              <double>{THRESHOLD1}</double>
+            </right>
+          </comparison-function>
+        </evaluation-tree>
+      </mapping-function-2-value>
+
+      <!-- Example: RANGE THRESHOLD1 <= x < THRESHOLD2 -->
+      <!-- Can be done using a logical-operator -->
+      <mapping-function-2-value order="1" value="{STATE_LABELS[1]}">
+        <evaluation-tree data-type="logical-function">
+          <logical-function logical-operator="and">
+            <operands>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="bigger-equal">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="{DERIVED_FROM}"/>
+                  </left>
+                  <right data-type="double">
+                    <double>{THRESHOLD1}</double>
+                  </right>
+                </comparison-function>
+              </operand>
+              <operand data-type="comparison-function">
+                <comparison-function comparison-operator="smaller">
+                  <left data-type="concept-id-allowed-values">
+                    <concept-id-allowed-values id="{DERIVED_FROM}"/>
+                  </left>
+                  <right data-type="double">
+                    <double>{THRESHOLD2}</double>
+                  </right>
+                </comparison-function>
+              </operand>
+            </operands>
+          </logical-function>
+        </evaluation-tree>
+      </mapping-function-2-value>
+
+      <!-- Example: x >= THRESHOLD2 -->
+      <mapping-function-2-value order="2" value="{STATE_LABELS[2]}">
+        <evaluation-tree data-type="comparison-function">
+          <comparison-function comparison-operator="bigger-equal">
+            <left data-type="concept-id-allowed-values">
+              <concept-id-allowed-values id="{DERIVED_FROM}"/>
+            </left>
+            <right data-type="double">
+              <double>{THRESHOLD2}</double>
             </right>
           </comparison-function>
         </evaluation-tree>
@@ -33,6 +101,8 @@
       <!-- Add more <mapping-function-2-value> blocks as needed -->
     </mapping-functions-to-values>
   </mapping-function>
+
+
   <ordinal-allowed-values output-type="ordinal">
     <persistence>
       <global-persistence behavior="{GLOBAL_PERSISTENCE_BEHAVIOR}" granularity="{GLOBAL_PERSISTENCE_GRANULARITY}">
@@ -46,8 +116,8 @@
       </local-persistence>
     </persistence>
     <values>
-      <ordinal-allowed-value order="0" value="{Label1}"/>
-      <!-- Add more ordinal values as needed -->
+      <ordinal-allowed-value order="0" value="{STATE_LABELS[0]}"/>
+      <!-- Add more ordinal values as needed, based on number of states you defined -->
     </values>
   </ordinal-allowed-values>
 </state>
