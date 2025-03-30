@@ -6,6 +6,8 @@ call this module to create a zipped folder with your TAK files
 import os
 import shutil
 import zipfile
+from tak_automator import TAKAutomator
+from Config.agent_config import AgentConfig
 
 def copy_and_compress_files(source_dir, files_to_remove, zip_name):
     tmp_dir=f'/tmp/{zip_name}'
@@ -48,10 +50,34 @@ def copy_and_compress_files(source_dir, files_to_remove, zip_name):
     print(f"🗑️ Folder {tmp_dir} deleted after compression.")
 
 
+def main_menu():
+    print("\n--- TAKAutomator Menu ---")
+    print("1. Run TAKAutomator (full run)")
+    print("2. Run TAKAutomator (test mode - one TAK only)")
+    print("3. Zip TAKs folder for deployment")
+    print("0. Exit")
+
+    while True:
+        choice = input("\nEnter your choice (0–3): ").strip()
+        
+        if choice == "1":
+            print("\n▶ Running TAKAutomator in full mode...")
+            automator = TAKAutomator()
+            automator.run(test_mode=False)
+        elif choice == "2":
+            print("\n🧪 Running TAKAutomator in test mode...")
+            automator = TAKAutomator()
+            automator.run(test_mode=True)
+        elif choice == "3":
+            source_directory = os.path.join(os.getcwd(), "TAKs")
+            zip_name = input("Enter zip name (e.g. '1600'): ").strip()
+            files_to_remove = ['STATE_BASAL_BITZUA.xml', 'STATE_BOLUS_BITZUA.xml']  # You can hardcode or dynamically add known invalids here
+            copy_and_compress_files(source_directory, files_to_remove, zip_name)
+        elif choice == "0":
+            print("👋 Exiting.")
+            break
+        else:
+            print("❌ Invalid choice. Please enter 0, 1, 2, or 3.")
+
 if __name__ == "__main__":
-    # Example usage
-    source_directory = "c:/Users/shaha/Projects/XML/TAKAutomator/TAKs"  # Change to the actual path
-    files_to_remove = ['STATE_BASAL_BITZUA.xml', 'STATE_BOLUS_BITZUA.xml']
-    zip_name = '1600' # As str
-    
-    copy_and_compress_files(source_directory, files_to_remove, zip_name)
+    main_menu()

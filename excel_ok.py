@@ -70,7 +70,7 @@ class Excelok:
         for idx, row in df.iterrows():
             typ = row["TYPE"].strip().lower() if pd.notna(row["TYPE"]) else ""
             if typ == "numeric-raw-concept":
-                for col in ["ALLOWED_VALUES_NUMERIC_MIN", "ALLOWED_VALUES_NUMERIC_MAX", "ALLOWED_VALUES_UNIT", "ALLOWED_VALUES_SCALE"]:
+                for col in ["ALLOWED_VALUES_NUMERIC_MIN", "ALLOWED_VALUES_NUMERIC_MAX", "ALLOWED_VALUES_UNITS", "ALLOWED_VALUES_SCALE"]:
                     if col not in df.columns or pd.isna(row[col]) or row[col].strip() == "":
                         return False, f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for numeric-raw-concept."
             elif typ == "nominal-raw-concept":

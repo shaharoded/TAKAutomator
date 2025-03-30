@@ -4,7 +4,6 @@ __pycache__/
 TAKS/
 
 # Specific files
-schema.xsd
 secret_keys.py
 tak_registry.json
 *.zip

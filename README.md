@@ -12,7 +12,7 @@ TAKAutomator:
 - 🧠 Uses a local LLM agent (e.g., OpenAI GPT) to generate XML output that matches schema and business logic.
 - ✅ Validates output against schema and Excel-based constraints using dual validation (`TAKok`, `Excelok`).
 - 🔄 Iteratively corrects and retries generation based on feedback.
-- 📁 Saves valid TAKs to organized folders and tracks progress in a registry file (`tak_registry.json`).
+- 📁 Saves valid TAKs to organized folders and tracks progress in a registry file (`tak_registry.json`), and compress them as zip for deployment upon request (`main.py`).
 
 ---
 
@@ -21,23 +21,25 @@ TAKAutomator:
 ```bash
 TAKAutomator/
 │
-├── Config/                      # Configuration files (paths, constants, engine)
+├── Config/                      # Configuration files (paths,constants, engine)
 ├── tak_automator.py            # Main automation logic (TAKAutomator class)
 ├── llm_agent.py                # LLM agent wrapper for OpenAI API
 ├── tak_ok.py                   # TAK validation logic (schema + business rules)
 ├── excel_ok.py                 # Excel validation logic
+├── main.py                     # API activation and package compression.
 ├── tak_templates/              # Templates for each TAK concept type (used for LLM guidance)
-├── sample_tak.xml              # Optional test file
 ├── tak_registry.json           # Local tracking of already-generated TAKs
 ├── requirements.txt            # Python dependencies
 └── README.md
 ```
 
 ## Installation
-
 ### Prerequisites
 
 - Python 3.7 or higher
+- Access to OpenAI API (a `secret_keys.py` file)
+- A valid schema .xsd file
+- A well-structured `taks.xlsx` file with proper TAK definitions
 
 ### Setup
 
@@ -54,6 +56,10 @@ cd TAKAutomator
 # On Windows
 python -m venv venv
 venv\Scripts\activate
+
+# On macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 3. Install dependencies:
@@ -62,7 +68,46 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Pushing to git (after initiating the folder and connecting to git):
+4. Comfigure validator and agent in `Config.agent_config.py` and `Config.validator_config.py`
+
+
+## Usage
+
+- The tool will validate the Excel file.
+- Iterate through required sheets (raw_concepts, states, events).
+- Generate TAK XMLs one by one using GPT, validating each.
+- Valid TAKs are saved in TAKs/<sheet_name>/ folders.
+- Invalid TAKs are also saved with _INVALID_ suffix for manual review.
+
+To test with a single TAK and avoid burning LLM quota, run in test mode:
+
+```bash
+automator.run(test_mode=True)
+```
+
+## Features
+
+- Dual-level validation (XSD schema + business logic)
+- Token tracking for LLM cost-awareness
+- Retry mechanism with feedback on failed generation
+- Persistent tracking via JSON registry
+- Template-driven prompting (improves LLM accuracy)
+- Modular: easy to extend with new concept types or logic rules
+
+## TO-DOs and Improvements
+
+1. ✅ Improve schema parsing for automated structure generation instead of relying on XML templates
+2. ✅ Extend support for additional TAK types:
+    - pattern
+    - context
+    - enrich event handling
+
+## Notes
+- Templates are stored under tak_templates/ and must match Excel concept types.
+- The generated XMLs are validated using the schema provided in ValidatorConfig.SCHEMA_PATH.
+
+## GIT Commit Tips
+Once you've made changes, commit and push as usual:
 
 ```bash
 git add .

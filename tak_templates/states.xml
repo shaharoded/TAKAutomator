@@ -19,6 +19,7 @@
     <!-- values are matched like MAPPING[idx] -> STATE_LABELS[idx] -->
       <mapping-function-2-value order="0" value="{Label1}">
         <evaluation-tree data-type="comparison-function">
+          <!-- comparison operators: ['bigger', 'bigger-equal', 'smaller', 'smaller-equal', 'equal', 'not-equal'] -->
           <comparison-function comparison-operator="{operator}">
             <left data-type="concept-id-allowed-values">
               <concept-id-allowed-values id="{DERIVED_FROM}"/>
