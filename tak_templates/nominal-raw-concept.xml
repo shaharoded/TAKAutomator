@@ -1,0 +1,26 @@
+<nominal-raw-concept id="{ID}" name="{TAK_NAME}" concept-type="raw-nominal">
+  <categories>
+    <category>{CATEGORY}</category>
+  </categories>
+  <standard-terms/>
+  <synonyms/>
+  <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
+  <clippers/>
+  <nominal-allowed-values output-type="{OUTPUT_TYPE}">
+    <persistence>
+      <global-persistence granularity="{GLOBAL_PERSISTENCE_GRANULARITY}" behavior="{GLOBAL_PERSISTENCE_BEHAVIOR}">
+        <interpolation-table>
+          <rows/>
+        </interpolation-table>
+      </global-persistence>
+      <local-persistence>
+        <good-before value="{LOCAL_PERSISTENCE_GOOD_BEFORE_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_BEFORE_GRANULARITY}"/>
+        <good-after value="{LOCAL_PERSISTENCE_GOOD_AFTER_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_AFTER_GRANULARITY}"/>
+      </local-persistence>
+    </persistence>
+    <values>
+      <nominal-allowed-value value="{ALLOWED_VALUES_NOMINAL}"/>
+      <!-- Add more <nominal-allowed-value> blocks if needed -->
+    </values>
+  </nominal-allowed-values>
+</nominal-raw-concept>

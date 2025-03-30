@@ -60,14 +60,6 @@ class Excelok:
 
     def validate_raw_concepts(self, df: pd.DataFrame) -> Tuple[bool, str]:
         """Validate structure and required values for raw_concepts sheet."""
-        # Basic required columns for raw_concepts
-        required_cols = ["ID", "TAK_NAME", "TYPE", "GOOD_BEFORE", "GOOD_BEFORE_GRANULARITY", "GOOD_AFTER", "GOOD_AFTER_GRANULARITY",
-                         "downward-hereditary", "forward", "backward", "solid", "concatenable", "gestalt", 
-                         "OUTPUT_TYPE",	"GLOBAL_GRANULARITY",	"GLOBAL_BEHAVIOUR"
-                         ]
-        missing = [col for col in required_cols if col not in df.columns]
-        if missing:
-            return False, f"Missing columns: {', '.join(missing)}"
 
         # Check that ID is present and unique
         if df["ID"].isnull().any() or (df["ID"].str.strip() == "").any():
@@ -78,23 +70,16 @@ class Excelok:
         for idx, row in df.iterrows():
             typ = row["TYPE"].strip().lower() if pd.notna(row["TYPE"]) else ""
             if typ == "numeric-raw-concept":
-                for col in ["MIN_VALUE", "MAX_VALUE", "UNIT", "SCALE"]:
+                for col in ["ALLOWED_VALUES_NUMERIC_MIN", "ALLOWED_VALUES_NUMERIC_MAX", "ALLOWED_VALUES_UNIT", "ALLOWED_VALUES_SCALE"]:
                     if col not in df.columns or pd.isna(row[col]) or row[col].strip() == "":
                         return False, f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for numeric-raw-concept."
             elif typ == "nominal-raw-concept":
-                if "NOMINAL_VALUES" not in df.columns or pd.isna(row["NOMINAL_VALUES"]) or row["NOMINAL_VALUES"].strip() == "":
-                    return False, f"Row {idx+2} (ID={row['ID']}): 'NOMINAL_VALUES' must be specified for nominal-raw-concept."
+                if "ALLOWED_VALUES_NOMINAL" not in df.columns or pd.isna(row["ALLOWED_VALUES_NOMINAL"]) or row["ALLOWED_VALUES_NOMINAL"].strip() == "":
+                    return False, f"Row {idx+2} (ID={row['ID']}): 'ALLOWED_VALUES_NOMINAL' must be specified for nominal-raw-concept."
         return True, "Raw concepts are valid."
 
     def validate_states(self, df: pd.DataFrame) -> Tuple[bool, str]:
         """Validate structure and content for states sheet."""
-        required_cols = ["ID", "TAK_NAME", "DERIVED_FROM", "Mapping_Rank_Selection_Criteria", 
-                         "MAPPING", "STATE_LABELS", "GOOD_BEFORE", "GOOD_BEFORE_GRANULARITY", "GOOD_AFTER", "GOOD_AFTER_GRANULARITY",
-                         "downward-hereditary",	"forward",	"backward",	"solid", "concatenable", "gestalt"]
-        missing = [col for col in required_cols if col not in df.columns]
-        if missing:
-            return False, f"Missing columns: {', '.join(missing)}"
-        
         # Check STATE_ID non-empty and unique
         if df["ID"].isnull().any() or (df["ID"].str.strip() == "").any():
             return False, "One or more rows in states have an empty STATE_ID."

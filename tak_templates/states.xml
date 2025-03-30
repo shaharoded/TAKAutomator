@@ -1,0 +1,52 @@
+<state id="{ID}" name="{TAK_NAME}" concept-type="state">
+  <categories>
+    <category>{Category1}</category>
+    <category>{Category2}</category>
+  </categories>
+  <standard-terms/>
+  <synonyms>
+    <synonym>{Synonym}</synonym>
+  </synonyms>
+  <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
+  <clippers/>
+  <derived-from>
+    <derived-from-id>{DerivedConceptID}</derived-from-id>
+  </derived-from>
+  <abstraction-at-contexts/>
+  <mapping-function rank-selection-criteria="{Mapping_Rank_Selection_Criteria}">
+    <mapping-functions-to-values>
+    <!-- ordinal bin ranges are under column MAPPING, and their matched label under STATE_LABELS -->
+    <!-- values are matched like MAPPING[idx] -> STATE_LABELS[idx] -->
+      <mapping-function-2-value order="0" value="{Label1}">
+        <evaluation-tree data-type="comparison-function">
+          <comparison-function comparison-operator="{operator}">
+            <left data-type="concept-id-allowed-values">
+              <concept-id-allowed-values id="{DERIVED_FROM}"/>
+            </left>
+            <right data-type="double">
+              <double>{Threshold}</double>
+            </right>
+          </comparison-function>
+        </evaluation-tree>
+      </mapping-function-2-value>
+      <!-- Add more <mapping-function-2-value> blocks as needed -->
+    </mapping-functions-to-values>
+  </mapping-function>
+  <ordinal-allowed-values output-type="ordinal">
+    <persistence>
+      <global-persistence behavior="{GLOBAL_PERSISTENCE_BEHAVIOR}" granularity="{GLOBAL_PERSISTENCE_GRANULARITY}">
+        <interpolation-table>
+          <rows/>
+        </interpolation-table>
+      </global-persistence>
+      <local-persistence>
+        <good-before value="{LOCAL_PERSISTENCE_GOOD_BEFORE_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_BEFORE_GRANULARITY}"/>
+        <good-after value="{LOCAL_PERSISTENCE_GOOD_AFTER_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_AFTER_GRANULARITY}"/>
+      </local-persistence>
+    </persistence>
+    <values>
+      <ordinal-allowed-value order="0" value="{Label1}"/>
+      <!-- Add more ordinal values as needed -->
+    </values>
+  </ordinal-allowed-values>
+</state>

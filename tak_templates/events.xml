@@ -1,0 +1,12 @@
+<event id="{ID}" name="{TAK_NAME}" concept-type="event">
+  <categories/>
+  <standard-terms/>
+  <synonyms/>
+  <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
+  <Attributes>
+    <Attribute-id>{Attribute1}</Attribute-id>
+    <Attribute-id>{Attribute2}</Attribute-id>
+  </Attributes>
+  <Event-Extend-Id/>
+  <Event-Types>{CommaSeparatedTypes}</Event-Types>
+</event>

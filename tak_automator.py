@@ -2,6 +2,7 @@ import os
 from lxml import etree
 import pandas as pd
 import json
+from typing import List
 
 # Local Code
 from Config.validator_config import ValidatorConfig
@@ -83,7 +84,7 @@ class TAKAutomator:
                 if tak_id in self.registry:
                     print(f"[SKIP]: TAK {tak_id} already generated as {self.registry[tak_id]}")
                     continue
-
+                print(f"[RUNTIME STATUS]: Generating TAK ID={tak_id}, NAME={tak_name}")
                 for i in range(self.max_iters):
                     prompt = self._build_prompt(sheet, row, feedback, prev_outputs)
                     tak_text = self.llm.generate_response(prompt)
@@ -121,30 +122,41 @@ class TAKAutomator:
         """
         with open(os.path.join(folder, filename), 'w', encoding='utf-8') as f:
             f.write(content)
-            
-    def _extract_schema_for_type(self, schema_path: str, concept_type: str) -> str:
+    
+    def _get_template(self, concept_type: str) -> str:
         """
-        Extract only the relevant part of the schema corresponding to the TAK type.
+        Loads the appropriate XML template from the `tak_templates` directory.
 
         Args:
-            schema_path (str): Path to the schema file.
-            concept_type (str): TAK concept type (e.g. 'state', 'numeric-raw-concept').
+            concept_type (str): TAK type (e.g., 'nominal-raw-concept')
 
         Returns:
-            str: XML string of the relevant schema section.
-
-        Raises:
-            ValueError: If the concept type is not found in the schema.
+            str: Contents of the XML template with placeholders
         """
-        tree = etree.parse(schema_path)
-        root = tree.getroot()
-        
-        for element in root.findall(".//{http://www.w3.org/2001/XMLSchema}element"):
-            if element.get("name") == concept_type:
-                return etree.tostring(element, pretty_print=True, encoding='unicode')
-        
-        raise ValueError(f"Concept type '{concept_type}' not found in schema.")
+        template_path = os.path.join("tak_templates", f"{concept_type}.xml")
+        if os.path.exists(template_path):
+            with open(template_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        print(f"[WARNING]: No template available for {concept_type}")
+        return f"<!-- No template available for {concept_type} -->"
 
+    def _format_row_for_prompt(self, row: pd.Series) -> str:
+        """
+        Flatly formats a TAK row from Excel into a consistent bullet list for the LLM.
+        This ensures all fields are presented, without assumptions on naming.
+        """
+        lines = []
+        for key, value in row.items():
+            if key == 'NOTES':
+                continue
+            if pd.isna(value) or value == "":
+                continue
+            if isinstance(value, str) and value.strip().startswith("[") and value.strip().endswith("]"):
+                lines.append(f"- {key}: {value} (list)")
+            else:
+                lines.append(f"- {key}: {value}")
+        return "\n".join(lines)
+    
     def _build_prompt(self, sheet: str, row: pd.Series, feedback: str, previous: list) -> str:
         """
         Build a complete prompt for the LLM based on Excel row and prior context.
@@ -159,23 +171,20 @@ class TAKAutomator:
             str: A full prompt string to be sent to the LLM.
         """
         concept_type = sheet if sheet in ["states", "events"] else row.get("TYPE", "").strip()
-        schema_fragment = self._extract_schema_for_type(ValidatorConfig.SCHEMA_PATH, concept_type)
-        
+        template = self._get_template(concept_type)
+
         parts = [
             f"You are creating a TAK file of type '{concept_type}', named '{row['TAK_NAME']}' with ID '{row['ID']}'.",
-            "Please follow this XML schema fragment to ensure the structure is valid:",
-            schema_fragment,
-            "Below is the Excel row defining all business logic fields. You must reflect this information in the XML accurately:",
-            row.to_json(),
-            "Ensure all mandatory blocks from the schema are present, even if empty. For example: <categories>, <synonyms>, <clippers>, etc.",
-            "For nominal-raw-concept: include <nominal-allowed-values> with nested <persistence> and <values> blocks. Wrap each allowed value in <nominal-allowed-value>.",
-            "For persistence: include both global and local persistence with their required attributes (e.g., granularity, behavior)."
+            "\nPlease follow this XML structure template to ensure the structure is valid:\n",
+            template,
+            "\nBelow is the Excel row defining all business logic fields. You must reflect this information in the XML accurately:\n",
+            self._format_row_for_prompt(row)
         ]
-
-        # Add schema and business logic instructions placeholder
-        parts.append("Refer to the following business logic requirements and structure accordingly.")
-        parts.append(row.to_json())
-
+        
+        if pd.notna(row.get("NOTES")) and row["NOTES"].strip():
+            parts.append("\nUse the following note as internal documentation inside the XML. You don't need to copy them but to add relevant documentation in the right places based on them:")
+            parts.append(row["NOTES"].strip())
+            
         if feedback:
             parts.append("\nPrevious attempt had the following issues:")
             parts.append(feedback)
@@ -189,4 +198,4 @@ class TAKAutomator:
 
 if __name__ == "__main__":
     automator = TAKAutomator()
-    automator.run(test_mode=True)
+    automator.run()

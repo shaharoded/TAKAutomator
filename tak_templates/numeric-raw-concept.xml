@@ -1,0 +1,22 @@
+<numeric-raw-concept id="{ID}" name="{TAK_NAME}" concept-type="raw-numeric">
+  <categories>
+    <category>{CATEGORY}</category>
+  </categories>
+  <standard-terms/>
+  <synonyms/>
+  <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
+  <clippers/>
+  <numeric-allowed-values min-value="{ALLOWED_VALUES_NUMERIC_MIN}" max-value="{ALLOWED_VALUES_NUMERIC_MAX}" unit="{ALLOWED_VALUES_UNIT}" scale="{ALLOWED_VALUES_SCALE}" output-type="{OUTPUT_TYPE}">
+    <persistence>
+      <global-persistence granularity="{GLOBAL_PERSISTENCE_GRANULARITY}" behavior="{GLOBAL_PERSISTENCE_BEHAVIOR}">
+        <interpolation-table>
+          <rows/>
+        </interpolation-table>
+      </global-persistence>
+      <local-persistence>
+        <good-before value="{LOCAL_PERSISTENCE_GOOD_BEFORE_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_BEFORE_GRANULARITY}"/>
+        <good-after value="{LOCAL_PERSISTENCE_GOOD_AFTER_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_AFTER_GRANULARITY}"/>
+      </local-persistence>
+    </persistence>
+  </numeric-allowed-values>
+</numeric-raw-concept>
