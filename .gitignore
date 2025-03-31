@@ -7,3 +7,4 @@ TAKS/
 secret_keys.py
 tak_registry.json
 *.zip
+sample_tak.xml

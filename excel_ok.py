@@ -1,6 +1,6 @@
 import pandas as pd
 import json
-from typing import Tuple
+from typing import Tuple, List
 
 # Local Code
 from Config.validator_config import ValidatorConfig
@@ -122,6 +122,9 @@ class Excelok:
                     return False, f"Row {idx+2} (ID={row['ID']}): MAPPING and STATE_LABELS must be lists."
                 if len(bins) != len(labels):
                     return False, f"Row {idx+2} (ID={row['ID']}): MAPPING and STATE_LABELS must have the same length."
+                range_issues = self._validate_range_list_integrity(bins)
+                if range_issues:
+                    return False, f"Row {idx+2} (ID={row['ID']}): MAPPING had business logic issues: {'\n'.join(range_issues)}"
         return True, "States are valid."
 
     def validate_events(self, df: pd.DataFrame) -> Tuple[bool, str]:
@@ -153,6 +156,36 @@ class Excelok:
                         return False, f"Row {idx+2} (ID={row['ID']}): ATTRIBUTES contains undefined ID '{d}'."
         
         return True, "Events are valid."
+    
+    def _validate_range_list_integrity(self, ranges: List[List[float]]) -> List[str]:
+        """
+        Validates that a list of numeric ranges is sorted, non-overlapping, and gap-free.
+
+        Args:
+            ranges (List[List[float]]): List of [start, end] numeric ranges.
+
+        Returns:
+            List[str]: List of issues found in the range structure.
+        """
+        issues = []
+        if not ranges:
+            return ["Empty range list provided."]
+
+        # Sort by start of range
+        ranges_sorted = sorted(ranges, key=lambda r: r[0])
+
+        for i, (start, end) in enumerate(ranges_sorted):
+            if start >= end:
+                issues.append(f"Range {i} is invalid: start {start} is not less than end {end}.")
+
+            if i > 0:
+                prev_end = ranges_sorted[i-1][1]
+                if start < prev_end:
+                    issues.append(f"Range {i} overlaps with previous range: starts at {start}, previous ends at {prev_end}.")
+                elif start > prev_end:
+                    issues.append(f"Gap detected: Range {i-1} ends at {prev_end}, but Range {i} starts at {start}.")
+
+        return issues
 
 
 if __name__ == "__main__":
