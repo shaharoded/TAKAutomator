@@ -110,7 +110,7 @@ class TAKok:
                 issues.append("Missing <Attributes> block in event.")
 
         if issues:
-            return False, "Business issues: " + "; ".join(issues)
+            return False, "Business logic issues: " + "; ".join(issues)
 
         return True, "Valid"
 
@@ -137,68 +137,116 @@ class TAKok:
     
     def _validate_state_range_coverage(self, doc: etree._Element) -> List[str]:
         """
-        Validates that the mapping-function in a state TAK has proper bin range coverage.
-        Ensures that:
-        - The first bin is a lower-bound (e.g., x < threshold1)
-        - The last bin is an upper-bound (e.g., x >= thresholdN)
-        - Intermediate bins are ranges (e.g., x >= threshold1 and x < threshold2)
+        Validates bin coverage in a <state> TAK's <mapping-function>. Ensures:
+        - Each bin has a valid comparison or logical structure.
+        - Bin descriptions are printed clearly (e.g., "x < 54", "70 <= x < 140").
+        - The full numeric range is covered without overlaps or gaps.
 
         Args:
-            doc (etree._Element): Parsed XML tree for the TAK
+            doc (etree._Element): The parsed XML document for a TAK of type 'state'.
 
         Returns:
-            List[str]: List of any range-related issues found
+            List[str]: List of issues found, including faulty bins and problematic transitions.
         """
-        issues = []
+        def op_symbol(op: str) -> str:
+            return {
+                "smaller": "<",
+                "smaller-equal": "<=",
+                "bigger": ">",
+                "bigger-equal": ">=",
+                "equal": "==",
+                "not-equal": "!="
+            }.get(op, op)
 
+        def format_bound(bound: Tuple[str, float]) -> str:
+            """
+            Helper to format a bound as a number string.
+            Args:
+                bound: A tuple (operator, value)
+            Returns:
+                str: Just the value part formatted.
+            """
+            return f"{bound[1]}"
+
+        issues = []
         bins = doc.findall(".//mapping-function-2-value")
+        ranges = []
+
         if not bins:
             return ["Missing <mapping-function-2-value> bins."]
 
         for idx, bin_elem in enumerate(bins):
+            label = bin_elem.get("value", f"Bin {idx}")
             eval_tree = bin_elem.find(".//evaluation-tree")
             if eval_tree is None:
-                issues.append(f"Bin {idx}: Missing <evaluation-tree>.")
+                issues.append(f"Bin {idx} ('{label}'): Missing <evaluation-tree>.")
                 continue
 
             logic = eval_tree.find(".//logical-function")
             comp = eval_tree.find(".//comparison-function")
+            range_repr = ""
+            lower = upper = None
 
-            if idx == 0:
-                # Expect a single comparison like x < X
-                if comp is None:
-                    issues.append(f"Bin {idx}: Expected a single <comparison-function> for lower bound.")
+            if logic is not None:
+                ops = logic.findall(".//comparison-function")
+                for op in ops:
+                    operator = op.get("comparison-operator")
+                    val = float(op.findtext(".//double"))
+                    if operator in ("bigger", "bigger-equal"):
+                        lower = (operator, val)
+                    elif operator in ("smaller", "smaller-equal"):
+                        upper = (operator, val)
+                if lower and upper:
+                    range_repr = f"x {op_symbol(lower[0])} {lower[1]} AND x {op_symbol(upper[0])} {upper[1]}"
+                elif lower or upper:
+                    # Fallback for malformed logic
+                    bound = lower or upper
+                    range_repr = f"x {op_symbol(bound[0])} {bound[1]}"
                 else:
-                    op = comp.get("comparison-operator", "")
-                    if op not in ("smaller", "smaller-equal"):
-                        issues.append(f"Bin {idx}: Expected 'smaller' or 'smaller-equal' but got '{op}'.")
-            elif idx == len(bins) - 1:
-                # Expect a single comparison like x >= X
-                if comp is None:
-                    issues.append(f"Bin {idx}: Expected a single <comparison-function> for upper bound.")
-                else:
-                    op = comp.get("comparison-operator", "")
-                    if op not in ("bigger", "bigger-equal"):
-                        issues.append(f"Bin {idx}: Expected 'bigger' or 'bigger-equal' but got '{op}'.")
+                    range_repr = "Invalid logical function"
+            elif comp is not None:
+                operator = comp.get("comparison-operator")
+                val = float(comp.findtext(".//double"))
+                range_repr = f"x {op_symbol(operator)} {val}"
+                if operator in ("bigger", "bigger-equal"):
+                    lower = (operator, val)
+                elif operator in ("smaller", "smaller-equal"):
+                    upper = (operator, val)
             else:
-                # Expect a logical AND with two valid comparisons
-                if logic is None:
-                    issues.append(f"Bin {idx}: Expected <logical-function> with two range comparisons.")
-                else:
-                    operands = logic.findall(".//operand")
-                    if len(operands) != 2:
-                        issues.append(f"Bin {idx}: Logical function must contain exactly 2 operands.")
-                        continue
+                issues.append(f"Bin {idx} ('{label}'): No comparison or logic found.")
 
-                    ops = []
-                    for operand in operands:
-                        cmp_node = operand.find(".//comparison-function")
-                        if cmp_node is not None:
-                            ops.append(cmp_node.get("comparison-operator", ""))
+            ranges.append({
+                "idx": idx,
+                "label": label,
+                "lower": lower,
+                "upper": upper,
+                "description": range_repr
+            })
 
-                    if not any(op in ("bigger", "bigger-equal") for op in ops) or \
-                    not any(op in ("smaller", "smaller-equal") for op in ops):
-                        issues.append(f"Bin {idx}: Expected both lower and upper comparisons in logical function.")
+        # Add readable descriptions
+        for r in ranges:
+            issues.append(f"Bin {r['idx']} ('{r['label']}'): {r['description']}")
+
+        # Check for overlap/gaps
+        sorted_ranges = sorted(ranges, key=lambda r: r['lower'][1] if r['lower'] else -float('inf'))
+
+        for i in range(len(sorted_ranges) - 1):
+            curr = sorted_ranges[i]
+            next_ = sorted_ranges[i + 1]
+
+            curr_max = curr['upper'][1] if curr['upper'] else float('inf')
+            next_min = next_['lower'][1] if next_['lower'] else -float('inf')
+
+            if curr_max > next_min:
+                issues.append(
+                    f"Range overlap: Bin {curr['idx']} ('{curr['label']}') and Bin {next_['idx']} ('{next_['label']}') "
+                    f"overlap between {next_min} and {curr_max}."
+                )
+            elif curr_max < next_min - 1e-6:
+                issues.append(
+                    f"Range gap: Bin {curr['idx']} ('{curr['label']}') ends at {curr_max}, "
+                    f"but Bin {next_['idx']} ('{next_['label']}') starts at {next_min}."
+                )
 
         return issues
 
