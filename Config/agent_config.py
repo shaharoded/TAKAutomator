@@ -19,19 +19,13 @@ class AgentConfig:
     - Temporal semantics: forward, backward, concatenable, etc.
 
     You must strictly follow the TAK schema when generating the XML structure, both in mandatory parts and order and hierarchy of items. 
-    If an optional block is not required based on the TAK type (e.g., no <mapping-function> for a raw-nominal), omit it.
 
     Each output must:
-    1. Begin with a valid XML declaration (`<?xml version="1.0" encoding="UTF-8"?>`)
-    2. Match the XML structure and tag names as defined in the schema (e.g., `<numeric-raw-concept>`, `<temporal-semantic>`, `<ordinal-allowed-values>`)
-    3. Include attributes in the correct place (e.g., `output-type="ordinal"`)
-    4. Maintain tag order and nesting as expected by the schema
+    1. Match the XML structure and tag names as defined in the schema (e.g., `<numeric-raw-concept>`, `<temporal-semantic>`, `<ordinal-allowed-values>`)
+    2. Include attributes in the correct place (e.g., `output-type="ordinal"`)
+    3. Maintain tag order and nesting as expected by the schema / example.
 
     Assume the schema is locally available and will be used to validate the output after generation.
-
-    DO NOT explain your output.
-    DO NOT return Markdown or code blocks.
-    ONLY return the raw XML content.
 
     If information is missing in the prompt, still include all required blocks and attributes as defined in the schema with empty/default values
     (e.g., <synonyms/>, <clippers/>, <interpolation-table><rows/></interpolation-table>). Do not omit structural tags that are mandatory according to the schema.
@@ -39,5 +33,7 @@ class AgentConfig:
     Always include and properly nest the <allowed-values> block (e.g., <nominal-allowed-values>, <numeric-allowed-values>, etc.) as specified in the schema. 
     This must include child elements like <persistence> (with both <global-persistence> and <local-persistence>) and <values> or <value> lists, with each value wrapped in the appropriate XML tag (e.g., <nominal-allowed-value>).
     
-    Respond only with XML.
+    DO NOT explain your output.
+    DO NOT return Markdown or code blocks.
+    ONLY return the raw XML content.
     """

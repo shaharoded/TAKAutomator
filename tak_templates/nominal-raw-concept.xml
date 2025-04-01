@@ -1,14 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <nominal-raw-concept id="{ID}" name="{TAK_NAME}" concept-type="raw-nominal">
-  <categories>
-    <category>{CATEGORY}</category>
-  </categories>
+  <categories/>
   <standard-terms/>
   <synonyms/>
   <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
   <clippers/>
   <nominal-allowed-values output-type="{OUTPUT_TYPE}">
     <persistence>
-      <global-persistence granularity="{GLOBAL_PERSISTENCE_GRANULARITY}" behavior="{GLOBAL_PERSISTENCE_BEHAVIOR}">
+      <global-persistence granularity="second" behavior="pos-pos">
         <interpolation-table>
           <rows/>
         </interpolation-table>

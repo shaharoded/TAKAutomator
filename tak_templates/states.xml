@@ -1,17 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <state id="{ID}" name="{TAK_NAME}" concept-type="state">
-  <!-- Add categories if relevant else <categories/> -->
-  <categories>
-    <category>{Category}</category>
-    <!-- Add more if needed -->
-  </categories>
+  <categories/>
   <standard-terms/>
-  <!-- Add synonyms if relevant else <synonyms/> -->
-  <synonyms>
-    <synonym>{Synonym}</synonym>
-    <!-- Add more if needed -->
-  </synonyms>
-  <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
-  
+  <synonyms/>
+  <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>  
   <clippers/>
   <derived-from>
     <derived-from-id>{DERIVED_FROM}</derived-from-id>
@@ -105,7 +97,7 @@
 
   <ordinal-allowed-values output-type="ordinal">
     <persistence>
-      <global-persistence behavior="{GLOBAL_PERSISTENCE_BEHAVIOR}" granularity="{GLOBAL_PERSISTENCE_GRANULARITY}">
+      <global-persistence granularity="second" behavior="pos-pos">
         <interpolation-table>
           <rows/>
         </interpolation-table>
