@@ -124,7 +124,8 @@ class Excelok:
                     return False, f"Row {idx+2} (ID={row['ID']}): MAPPING and STATE_LABELS must have the same length."
                 range_issues = self._validate_range_list_integrity(bins)
                 if range_issues:
-                    return False, f"Row {idx+2} (ID={row['ID']}): MAPPING had business logic issues: {'\n'.join(range_issues)}"
+                    joined_issues = '\n'.join(range_issues)
+                    return False, f"Row {idx+2} (ID={row['ID']}): MAPPING had business logic issues: {joined_issues}"
         return True, "States are valid."
 
     def validate_events(self, df: pd.DataFrame) -> Tuple[bool, str]:

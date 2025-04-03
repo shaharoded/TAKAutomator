@@ -55,7 +55,7 @@ cd TAKAutomator
 ```bash
 # On Windows
 python -m venv venv
-venv\Scripts\activate
+.\venv\Scripts\Activate
 
 # On macOS/Linux
 python3 -m venv venv
