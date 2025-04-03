@@ -37,17 +37,25 @@ class Excelok:
 
         # Validate each sheet if present
         if "raw_concepts" in self.sheets:
-            valid, msg = self.validate_raw_concepts(self.sheets["raw_concepts"])
+            valid, msgs = self.validate_raw_concepts(self.sheets["raw_concepts"])
             if not valid:
-                errors.append(f"raw_concepts: \n{msg}")
+                msgs = "\n".join(msgs)
+                errors.append(f"raw_concepts: \n{msgs}")
         if "states" in self.sheets:
-            valid, msg = self.validate_states(self.sheets["states"])
+            valid, msgs = self.validate_states(self.sheets["states"])
+            msgs = "\n".join(msgs)
             if not valid:
-                errors.append(f"states: \n{msg}")
+                errors.append(f"states: \n{msgs}")
         if "events" in self.sheets:
-            valid, msg = self.validate_events(self.sheets["events"])
+            valid, msgs = self.validate_events(self.sheets["events"])
             if not valid:
-                errors.append(f"events: \n{msg}")
+                msgs = "\n".join(msgs)
+                errors.append(f"events: \n{msgs}")
+        if "contexts" in self.sheets:
+            valid, msgs = self.validate_events(self.sheets["events"])
+            if not valid:
+                msgs = "\n".join(msgs)
+                errors.append(f"events: \n{msgs}")
         
         # Validate unique IDs globally
         global_ids = sum([self.sheets[sheet]['ID'].dropna().tolist() for sheet in ValidatorConfig.REQUIRED_SHEETS if sheet in self.sheets], [])
@@ -58,105 +66,172 @@ class Excelok:
             return False, "!!!Excel file in invalid!!!\n" + "; ".join(errors)
         return True, "Excel file is valid."
 
-    def validate_raw_concepts(self, df: pd.DataFrame) -> Tuple[bool, str]:
-        """Validate structure and required values for raw_concepts sheet."""
+    def validate_raw_concepts(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
+        """
+        Validate structure and required values for the 'raw_concepts' sheet.
+
+        This includes:
+        - Ensuring non-empty and unique IDs.
+        - Checking that numeric concepts include all required numeric fields.
+        - Checking that nominal concepts include the ALLOWED_VALUES_NOMINAL field.
+
+        Returns:
+            Tuple:
+                - bool indicating if validation passed.
+                - list of error messages (empty if valid).
+        """
+        errors = []
 
         # Check that ID is present and unique
         if df["ID"].isnull().any() or (df["ID"].str.strip() == "").any():
-            return False, "One or more rows in raw_concepts have an empty ID."
+            errors.append("One or more rows in raw_concepts have an empty ID.")
         if df["ID"].duplicated().any():
-            return False, "IDs in raw_concepts are not unique."
+            errors.append("IDs in raw_concepts are not unique.")
 
         for idx, row in df.iterrows():
             typ = row["TYPE"].strip().lower() if pd.notna(row["TYPE"]) else ""
             if typ == "numeric-raw-concept":
-                for col in ["ALLOWED_VALUES_NUMERIC_MIN", "ALLOWED_VALUES_NUMERIC_MAX", "ALLOWED_VALUES_UNITS", "ALLOWED_VALUES_SCALE"]:
+                for col in ["ALLOWED_VALUES_MIN", "ALLOWED_VALUES_MAX", "ALLOWED_VALUES_UNITS", "ALLOWED_VALUES_SCALE"]:
                     if col not in df.columns or pd.isna(row[col]) or row[col].strip() == "":
-                        return False, f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for numeric-raw-concept."
+                        errors.append(f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for numeric-raw-concept.")
+            if typ == "time-raw-concept":
+                for col in ["ALLOWED_VALUES_MIN", "ALLOWED_VALUES_MAX"]:
+                    if col not in df.columns or pd.isna(row[col]) or row[col].strip() == "":
+                        errors.append(f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for time-raw-concept.")
             elif typ == "nominal-raw-concept":
                 if "ALLOWED_VALUES_NOMINAL" not in df.columns or pd.isna(row["ALLOWED_VALUES_NOMINAL"]) or row["ALLOWED_VALUES_NOMINAL"].strip() == "":
-                    return False, f"Row {idx+2} (ID={row['ID']}): 'ALLOWED_VALUES_NOMINAL' must be specified for nominal-raw-concept."
-        return True, "Raw concepts are valid."
+                    errors.append(f"Row {idx+2} (ID={row['ID']}): 'ALLOWED_VALUES_NOMINAL' must be specified for nominal-raw-concept.")
 
-    def validate_states(self, df: pd.DataFrame) -> Tuple[bool, str]:
-        """Validate structure and content for states sheet."""
-        # Check STATE_ID non-empty and unique
+        if errors:
+            return False, errors
+        return True, ["Raw concepts are valid."]
+
+    def validate_states(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
+        """
+        Validate structure and content for the 'states' sheet.
+
+        This includes:
+        - Ensuring non-empty and unique IDs.
+        - Validating DERIVED_FROM contains only known IDs.
+        - Ensuring valid MAPPING and STATE_LABELS for numeric-derived states.
+        - Ensuring STATE_LABELS match raw concept values for nominal-derived states.
+        - Checking MAPPING fully aligns with raw concept min/max ranges and is logically consistent.
+
+        Returns:
+            Tuple:
+                - bool indicating if validation passed.
+                - list of error messages (empty if valid).
+        """
+        errors = []
+
+        # Validate basic ID requirements
         if df["ID"].isnull().any() or (df["ID"].str.strip() == "").any():
-            return False, "One or more rows in states have an empty STATE_ID."
+            errors.append("One or more rows in states have an empty STATE_ID.")
         if df["ID"].duplicated().any():
-            return False, "STATE_IDs in states are not unique."
-
-        # Check that Derived_From is non-empty
+            errors.append("STATE_IDs in states are not unique.")
         if df["DERIVED_FROM"].isnull().any() or (df["DERIVED_FROM"].str.strip() == "").any():
-            return False, "One or more rows in states have an empty Derived_From."
+            errors.append("One or more rows in states have an empty Derived_From.")
 
-        # Global allowed IDs for DERIVED_FROM: union of raw_concepts and events
+        # Gather allowed IDs from raw_concepts and events
         allowed_ids = set()
         if "raw_concepts" in self.sheets:
             allowed_ids.update(self.sheets["raw_concepts"]["ID"].dropna().str.strip().tolist())
         if "events" in self.sheets:
             allowed_ids.update(self.sheets["events"]["ID"].dropna().str.strip().tolist())
 
+        # Map raw_concepts ID -> TYPE
+        raw_df = self.sheets.get("raw_concepts", pd.DataFrame())
+        raw_types = {
+            row["ID"].strip(): row["TYPE"].strip().lower()
+            for _, row in raw_df.iterrows()
+            if pd.notna(row["ID"]) and pd.notna(row["TYPE"])
+        }
+
         for idx, row in df.iterrows():
+            row_errors = []
+
+            # Check that all referenced IDs exist
             derived = row["DERIVED_FROM"].strip()
             derived_ids = [d.strip() for d in derived.split(",") if d.strip()]
-            for d in derived_ids:
-                if d not in allowed_ids:
-                    return False, f"Row {idx+2} (ID={row['ID']}): DERIVED_FROM contains undefined ID '{d}'."
-        
-        # Build a dictionary from the raw_concepts sheet: ID -> TYPE
-        raw_types = {row["ID"].strip(): row["TYPE"].strip().lower() for _, row in self.sheets["raw_concepts"].iterrows()}
-        
-        # For each state, check if its DERIVED_FROM refers to a raw concept that is not boolean.
-        # If none of the derived IDs is raw-boolean, then MAPPING and STATE_LABELS must be valid JSON lists of equal length.
-        for idx, row in df.iterrows():
-            derived_ids = [d.strip() for d in row["DERIVED_FROM"].split(",") if d.strip()]
-            skip_mapping = any((d in raw_types and raw_types[d] == "nominal-raw-concept") for d in derived_ids)
-            if not skip_mapping:
+            if len(derived_ids) > 1:
+                print(f"[Warning]: State {row['ID']} is is derived from more then 1 concept: {derived_ids} which the system can't currently enforce. Skipping on validation.")
+                continue
+            derived_id = derived_ids[0]
+            if derived_id not in allowed_ids:
+                row_errors.append(f"DERIVED_FROM contains undefined ID '{derived_id}'.")
+            if not raw_types.get(derived_id, None):
+                print(f"[Warning]: State {row['ID']}: Derived concept '{derived_id}' is not a raw concept (likely an event) which the system can't currently enforce. Skipping value-based validation.")
+                continue 
+
+            # Determine type of raw concept being derived from
+            is_nominal = raw_types.get(derived_id, "") == "nominal-raw-concept"
+            is_numeric = raw_types.get(derived_id, "") == "numeric-raw-concept"
+
+            # Always attempt to parse STATE_LABELS (needed for both nominal and numeric base types)
+            try:
+                labels = json.loads(row["STATE_LABELS"].strip())
+            except Exception as e:
+                row_errors.append(f"error parsing STATE_LABELS: {e}")
+                errors.append(f"Row {idx+2} (ID={row['ID']}): " + "; ".join(row_errors))
+                continue
+
+            if is_nominal:
+                # For nominal types: STATE_LABELS must match allowed values
+                derived_id = derived_ids[0]
+                raw_row = raw_df[raw_df["ID"].str.strip() == derived_id]
+                expected_raw = raw_row.iloc[0].get("ALLOWED_VALUES_NOMINAL", "")
+                try:
+                    expected_list = json.loads(expected_raw) if expected_raw else []
+                except json.JSONDecodeError:
+                    expected_list = [v.strip() for v in expected_raw.split(",")]  # fallback in case it's not a JSON array
+                if sorted(expected_list) != sorted(labels):
+                    row_errors.append(f"STATE_LABELS {labels} do not match ALLOWED_VALUES_NOMINAL {expected_list}.")
+
+            elif is_numeric:
+                # For numeric types: check MAPPING + STATE_LABELS consistency
                 try:
                     bins = json.loads(row["MAPPING"].strip())
-                    labels = json.loads(row["STATE_LABELS"].strip())
                 except Exception as e:
-                    return False, f"Row {idx+2} (ID={row['ID']}): error parsing MAPPING or STATE_LABELS: {e}"
-                if not isinstance(bins, list) or not isinstance(labels, list):
-                    return False, f"Row {idx+2} (ID={row['ID']}): MAPPING and STATE_LABELS must be lists."
-                if len(bins) != len(labels):
-                    return False, f"Row {idx+2} (ID={row['ID']}): MAPPING and STATE_LABELS must have the same length."
-                range_issues = self._validate_range_list_integrity(bins)
-                if range_issues:
-                    joined_issues = '\n'.join(range_issues)
-                    return False, f"Row {idx+2} (ID={row['ID']}): MAPPING had business logic issues: {joined_issues}"
-        return True, "States are valid."
+                    row_errors.append(f"error parsing MAPPING: {e}")
+                    errors.append(f"Row {idx+2} (ID={row['ID']}): " + "; ".join(row_errors))
+                    continue
 
-    def validate_events(self, df: pd.DataFrame) -> Tuple[bool, str]:
-        """Validate structure and content of events sheet."""
-        required_cols = ["ID", "TAK_NAME", "ATTRIBUTES"]
-        missing = [col for col in required_cols if col not in df.columns]
-        if missing:
-            return False, f"Missing columns: {', '.join(missing)}"
-        if df["ID"].isnull().any() or (df["ID"].str.strip() == "").any():
-            return False, "One or more rows in events have an empty EVENT_ID."
-        if df["ID"].duplicated().any():
-            return False, "IDs in events are not unique."
-        # Optionally, check if ATTRIBUTES is provided then non-empty.
-        if df["ATTRIBUTES"].isnull().any() or (df["ATTRIBUTES"].str.strip() == "").any():
-            return False, "One or more rows in events have an empty attribute."
-        
-        # If DERIVED_FROM is present in events, validate its entries.
-        allowed_ids = set()
-        if "raw_concepts" in self.sheets:
-            allowed_ids.update(self.sheets["raw_concepts"]["ID"].dropna().str.strip().tolist())
-        if "events" in self.sheets:
-            allowed_ids.update(self.sheets["events"]["ID"].dropna().str.strip().tolist())
-        for idx, row in df.iterrows():
-            derived = row["ATTRIBUTES"].strip() if pd.notna(row["ATTRIBUTES"]) else ""
-            if derived:
-                derived_ids = [d.strip() for d in derived.split(",") if d.strip()]
-                for d in derived_ids:
-                    if d not in allowed_ids:
-                        return False, f"Row {idx+2} (ID={row['ID']}): ATTRIBUTES contains undefined ID '{d}'."
-        
-        return True, "Events are valid."
+                # Validate structure of MAPPING and STATE_LABELS
+                if not isinstance(bins, list) or not isinstance(labels, list):
+                    row_errors.append("MAPPING and STATE_LABELS must be lists.")
+                elif len(bins) != len(labels):
+                    row_errors.append("MAPPING and STATE_LABELS must have the same length.")
+
+                # If a single raw concept, validate range bounds
+                raw_row = raw_df[raw_df["ID"].str.strip() == derived_id]
+                if not raw_row.empty:
+                    raw_row = raw_row.iloc[0]
+                    min_val = raw_row.get("ALLOWED_VALUES_MIN")
+                    max_val = raw_row.get("ALLOWED_VALUES_MAX")
+                    try:
+                        if min_val is not None and float(bins[0][0]) != float(min_val):
+                            row_errors.append(f"first bin lower bound ({bins[0][0]}) does not match raw concept min ({min_val}).")
+                        if max_val is not None and float(bins[-1][1]) != float(max_val):
+                            row_errors.append(f"last bin upper bound ({bins[-1][1]}) does not match raw concept max ({max_val}).")
+                    except Exception:
+                        row_errors.append("error comparing bin bounds with raw concept min/max.")
+                else:
+                    row_errors.append(f"Raw concept with ID '{derived_id}' not found for bin alignment check.")
+
+                # Validate MAPPING continuity and no overlap
+                range_issues = self._validate_range_list_integrity(bins)
+                row_errors.extend(range_issues)
+            
+            else:
+                print(f"[Warning]: State {row['ID']} is based on unsupported type of derived concept: {row['DERIVED_FROM']}. Needs further develoopment.")
+
+            # Append row-level errors if any
+            if row_errors:
+                errors.append(f"Row {idx+2} (ID={row['ID']}): " + "; ".join(row_errors))
+
+        if errors:
+            return False, errors
+        return True, ["States are valid."]
     
     def _validate_range_list_integrity(self, ranges: List[List[float]]) -> List[str]:
         """
@@ -187,6 +262,99 @@ class Excelok:
                     issues.append(f"Gap detected: Range {i-1} ends at {prev_end}, but Range {i} starts at {start}.")
 
         return issues
+    
+    def validate_events(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
+        """
+        Validate structure and content of events sheet.
+        
+        This includes checking:
+            - Required sheet existence
+            - No duplicate or empty IDs
+            - All attributes are valid raw concepts, if exists. 
+        """
+        errors = []
+        if df["ID"].isnull().any() or (df["ID"].str.strip() == "").any():
+            errors.append("One or more rows in events have an empty EVENT_ID.")
+        if df["ID"].duplicated().any():
+            errors.append("IDs in events are not unique.")
+        
+        # If DERIVED_FROM is present in events, validate its entries.
+        allowed_ids = set()
+        if "raw_concepts" in self.sheets:
+            allowed_ids.update(self.sheets["raw_concepts"]["ID"].dropna().str.strip().tolist())
+        if "events" in self.sheets:
+            allowed_ids.update(self.sheets["events"]["ID"].dropna().str.strip().tolist())
+        for idx, row in df.iterrows():
+            derived = row["ATTRIBUTES"].strip() if pd.notna(row["ATTRIBUTES"]) else ""
+            if derived:
+                derived_ids = [d.strip() for d in derived.split(",") if d.strip()]
+                for d in derived_ids:
+                    if d not in allowed_ids:
+                        errors.append(f"Row {idx+2} (ID={row['ID']}): ATTRIBUTES contains undefined ID '{d}'.")
+        if errors:
+            return False, errors        
+        return True, ["Events are valid."]
+    
+    def validate_contexts(df: pd.DataFrame, valid_ids: set) -> Tuple[bool, List[str]]:
+        """
+        Validates the context TAKs Excel sheet.
+
+        Checks:
+        - No duplicate context IDs.
+        - Each inducer ID exists in the global concept/event/state set.
+        - Each inducer has at least a 'from' or 'until' block.
+        - If 'from' or 'until' is present, its subfields (value and granularity) must exist.
+        - If a clipper is defined, all its related fields must be non-empty and valid.
+
+        Parameters:
+        - df: Contexts DataFrame.
+        - valid_ids: Set of valid concept/event/state IDs.
+
+        Returns:
+        - Tuple of validation result (bool) and list of error messages.
+        """
+        errors = []
+
+        # Check for duplicate IDs
+        if df["ID"].duplicated().any():
+            errors.append("Duplicate context IDs found.")
+
+        for idx, row in df.iterrows():
+            row_errors = []
+            row_id = row.get("ID", f"Row {idx+2}")
+
+            inducer_id = str(row.get("INDUCER_ID", "")).strip()
+            if not inducer_id:
+                row_errors.append("INDUCER_ID is missing.")
+            elif inducer_id not in valid_ids:
+                row_errors.append(f"INDUCER_ID '{inducer_id}' does not exist in the TAK entity list.")
+
+            # Validate inducer blocks: at least one of 'from' or 'until' is present
+            from_ok = str(row.get("FROM_BOUND", "")).strip() != ""
+            until_ok = str(row.get("UNTIL_BOUND", "")).strip() != ""
+
+            if not (from_ok or until_ok):
+                row_errors.append("At least one of FROM_BOUND or UNTIL_BOUND must be defined for the inducer.")
+
+            if from_ok:
+                if pd.isna(row.get("FROM_SHIFT")) or pd.isna(row.get("FROM_GRANULARITY")):
+                    row_errors.append("FROM_SHIFT and FROM_GRANULARITY must be provided if FROM_BOUND is specified.")
+
+            if until_ok:
+                if pd.isna(row.get("UNTIL_SHIFT")) or pd.isna(row.get("UNTIL_GRANULARITY")):
+                    row_errors.append("UNTIL_SHIFT and UNTIL_GRANULARITY must be provided if UNTIL_BOUND is specified.")
+
+            # Validate clipper if defined
+            clipper_id = str(row.get("CLIPPER_ID", "")).strip()
+            if clipper_id:
+                for field in ["CLIPPER_BOUND", "CLIPPER_SHIFT", "CLIPPER_GRANULARITY"]:
+                    if pd.isna(row.get(field)) or str(row.get(field)).strip() == "":
+                        row_errors.append(f"{field} must be defined if CLIPPER_ID is present.")
+
+            if row_errors:
+                errors.append(f"Row {idx+2} (ID={row_id}): " + "; ".join(row_errors))
+
+        return (False, errors) if errors else (True, ["Contexts are valid."])
 
 
 if __name__ == "__main__":

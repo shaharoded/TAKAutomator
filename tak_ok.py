@@ -94,6 +94,8 @@ class TAKok:
                 issues.append("Missing <numeric-allowed-values> for numeric-raw-concept.")
             elif typ == "nominal-raw-concept" and doc.find(".//nominal-allowed-values") is None:
                 issues.append("Missing <nominal-allowed-values> for nominal-raw-concept.")
+            elif typ == "time-raw-concept" and doc.find(".//time-allowed-values") is None:
+                issues.append("Missing <time-allowed-values> for time-raw-concept.")
 
         elif sheet == "states":
             if doc.find(".//derived-from") is None:
@@ -127,6 +129,7 @@ class TAKok:
         tag_to_sheet = {
             "numeric-raw-concept": "raw_concepts",
             "nominal-raw-concept": "raw_concepts",
+            "time-raw-concept": "raw_concepts",
             "state": "states",
             "event": "events",
             "pattern": "patterns",
@@ -142,9 +145,6 @@ class TAKok:
         - Bin descriptions are printed clearly (e.g., "x < 54", "70 <= x < 140").
         - The full numeric range is covered without overlaps or gaps.
 
-        Args:
-            doc (etree._Element): The parsed XML document for a TAK of type 'state'.
-
         Returns:
             List[str]: List of issues found, including faulty bins and problematic transitions.
         """
@@ -158,15 +158,30 @@ class TAKok:
                 "not-equal": "!="
             }.get(op, op)
 
-        def format_bound(bound: Tuple[str, float]) -> str:
-            """
-            Helper to format a bound as a number string.
-            Args:
-                bound: A tuple (operator, value)
-            Returns:
-                str: Just the value part formatted.
-            """
-            return f"{bound[1]}"
+        def is_overlap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
+            if not upper or not lower:
+                return False
+            val_u, op_u = upper
+            val_l, op_l = lower
+
+            if val_u > val_l:
+                return True
+            if val_u < val_l:
+                return False
+
+            # Same value — check if both allow equality
+            return op_u in ("smaller-equal", "==") and op_l in ("bigger-equal", "==")
+
+        def is_gap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
+            if not upper or not lower:
+                return False
+            val_u, op_u = upper
+            val_l, op_l = lower
+
+            if val_u < val_l:
+                # Check if there's a gap between the ranges
+                return not (op_u in ("smaller-equal", "==") or op_l in ("bigger-equal", "=="))
+            return False  # val_u >= val_l → no gap
 
         issues = []
         bins = doc.findall(".//mapping-function-2-value")
@@ -184,69 +199,70 @@ class TAKok:
 
             logic = eval_tree.find(".//logical-function")
             comp = eval_tree.find(".//comparison-function")
-            range_repr = ""
             lower = upper = None
+            desc = ""
 
             if logic is not None:
                 ops = logic.findall(".//comparison-function")
                 for op in ops:
                     operator = op.get("comparison-operator")
                     val = float(op.findtext(".//double"))
-                    if operator in ("bigger", "bigger-equal"):
-                        lower = (operator, val)
-                    elif operator in ("smaller", "smaller-equal"):
-                        upper = (operator, val)
+                    if operator.startswith("bigger"):
+                        lower = (val, operator)
+                    elif operator.startswith("smaller"):
+                        upper = (val, operator)
                 if lower and upper:
-                    range_repr = f"x {op_symbol(lower[0])} {lower[1]} AND x {op_symbol(upper[0])} {upper[1]}"
-                elif lower or upper:
-                    # Fallback for malformed logic
-                    bound = lower or upper
-                    range_repr = f"x {op_symbol(bound[0])} {bound[1]}"
+                    desc = f"x {op_symbol(lower[1])} {lower[0]} AND x {op_symbol(upper[1])} {upper[0]}"
                 else:
-                    range_repr = "Invalid logical function"
+                    desc = "Invalid logical-function"
             elif comp is not None:
                 operator = comp.get("comparison-operator")
                 val = float(comp.findtext(".//double"))
-                range_repr = f"x {op_symbol(operator)} {val}"
-                if operator in ("bigger", "bigger-equal"):
-                    lower = (operator, val)
-                elif operator in ("smaller", "smaller-equal"):
-                    upper = (operator, val)
+                if operator.startswith("bigger"):
+                    lower = (val, operator)
+                elif operator.startswith("smaller"):
+                    upper = (val, operator)
+                desc = f"x {op_symbol(operator)} {val}"
             else:
-                issues.append(f"Bin {idx} ('{label}'): No comparison or logic found.")
+                issues.append(f"Bin {idx} ('{label}'): No valid comparison or logic.")
+                continue
 
             ranges.append({
                 "idx": idx,
                 "label": label,
                 "lower": lower,
                 "upper": upper,
-                "description": range_repr
+                "description": desc
             })
 
-        # Add readable descriptions
+        # Describe all ranges
         for r in ranges:
             issues.append(f"Bin {r['idx']} ('{r['label']}'): {r['description']}")
 
-        # Check for overlap/gaps
-        sorted_ranges = sorted(ranges, key=lambda r: r['lower'][1] if r['lower'] else -float('inf'))
+        # Sort by lower bound value
+        sorted_ranges = sorted(ranges, key=lambda r: r['lower'][0] if r['lower'] else float('-inf'))
 
+        # Check gaps and overlaps between adjacent bins
         for i in range(len(sorted_ranges) - 1):
-            curr = sorted_ranges[i]
-            next_ = sorted_ranges[i + 1]
+            r1 = sorted_ranges[i]
+            r2 = sorted_ranges[i + 1]
+            upper1 = r1["upper"]
+            lower2 = r2["lower"]
 
-            curr_max = curr['upper'][1] if curr['upper'] else float('inf')
-            next_min = next_['lower'][1] if next_['lower'] else -float('inf')
+            if upper1 and lower2:
+                print(f"🧪 Checking gap/overlap between Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}')")
+                print(f"    Upper: {upper1}, Lower: {lower2}")
 
-            if curr_max > next_min:
-                issues.append(
-                    f"Range overlap: Bin {curr['idx']} ('{curr['label']}') and Bin {next_['idx']} ('{next_['label']}') "
-                    f"overlap between {next_min} and {curr_max}."
-                )
-            elif curr_max < next_min - 1e-6:
-                issues.append(
-                    f"Range gap: Bin {curr['idx']} ('{curr['label']}') ends at {curr_max}, "
-                    f"but Bin {next_['idx']} ('{next_['label']}') starts at {next_min}."
-                )
+                if is_overlap(upper1, lower2):
+                    issues.append(
+                        f"Range overlap: Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}') "
+                        f"overlap between {lower2[0]} and {upper1[0]}."
+                    )
+                elif is_gap(upper1, lower2):
+                    issues.append(
+                        f"Range gap: Bin {r1['idx']} ('{r1['label']}') ends at {upper1[0]}, "
+                        f"but Bin {r2['idx']} ('{r2['label']}') starts at {lower2[0]}."
+                    )
 
         return issues
 

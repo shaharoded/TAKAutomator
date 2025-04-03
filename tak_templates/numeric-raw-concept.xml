@@ -5,7 +5,7 @@
   <synonyms/>
   <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
   <clippers/>
-  <numeric-allowed-values min-value="{ALLOWED_VALUES_NUMERIC_MIN}" max-value="{ALLOWED_VALUES_NUMERIC_MAX}" units="{ALLOWED_VALUES_UNITS}" scale="{ALLOWED_VALUES_SCALE}" output-type="{OUTPUT_TYPE}">
+  <numeric-allowed-values min-value="{ALLOWED_VALUES_MIN}" max-value="{ALLOWED_VALUES_MAX}" units="{ALLOWED_VALUES_UNITS}" scale="{ALLOWED_VALUES_SCALE}" output-type="{OUTPUT_TYPE}">
     <persistence>
       <global-persistence granularity="second" behavior="pos-pos">
         <interpolation-table>

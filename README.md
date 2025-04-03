@@ -99,8 +99,9 @@ automator.run(test_mode=True)
 1. Improve schema parsing for automated structure generation instead of relying on XML templates
 2. Extend support for additional TAK types:
     - pattern
-    - context
-    - enrich event handling
+    - trends
+    - states to non-numeric concepts? No format / validation at the moment
+    - states and contexts can only handle 1 inducer/derived ID at the moment. To expand we'll need to enhance the logic.
 3. Range states still needs some work, as the LLM outputs non-covering ranges (for example, multiple `x >= thresh_i` for multiple thresholds in a row, causing the abstraction to ignore some state values). `TAKok` enforces and notify on these restrictions but the model is slow to adapt.
 
 ## Notes

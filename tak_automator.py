@@ -26,6 +26,7 @@ class TAKAutomator:
         """
         self.schema_path = ValidatorConfig.SCHEMA_PATH
         self.excel_path = ValidatorConfig.EXCEL_PATH
+        self.required_sheets = ValidatorConfig.REQUIRED_SHEETS
         self.max_iters = AgentConfig.MAX_ITERS
         self.excel_validator = Excelok(self.excel_path)
         self.tak_validator = TAKok(self.schema_path, self.excel_path)
@@ -64,7 +65,7 @@ class TAKAutomator:
         excel = pd.read_excel(self.excel_path, sheet_name=None, dtype=str)
         os.makedirs("TAKs", exist_ok=True)
 
-        for sheet in ValidatorConfig.REQUIRED_SHEETS:
+        for sheet in self.required_sheets:
             if sheet not in excel:
                 continue
 
@@ -170,7 +171,7 @@ class TAKAutomator:
         Returns:
             str: A full prompt string to be sent to the LLM.
         """
-        concept_type = sheet if sheet in ["states", "events"] else row.get("TYPE", "").strip()
+        concept_type = row.get("TYPE", "").strip() if sheet == 'raw_concepts' else sheet
         template = self._get_template(concept_type)
 
         parts = [

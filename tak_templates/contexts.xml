@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<context id="{ID}" name="{TAK_NAME}" concept-type="context">
+  <categories/>
+  <standard-terms/>
+  <synonyms/>
+
+  <!-- Required: Semantic rules that guide how the context interacts with others -->
+  <temporal-semantic 
+      downward-hereditary="{TEMPORAL_downward-hereditary}" 
+      forward="{TEMPORAL_forward}" 
+      backward="{TEMPORAL_backward}" 
+      solid="{TEMPORAL_solid}" 
+      concatenable="{TEMPORAL_concatenable}" 
+      gestalt="{TEMPORAL_gestalt}"/>
+
+  <!-- Required: defines what triggers (induces) the context -->
+  <inducer-entities>
+    <inducer-entity id="{INDUCER_ID}">
+      <!-- Required: Value(s) that trigger the context -->
+      <value-constraints>
+        <value-constraint value="{INDUCER_VALUE}" operator="{INDUCER_OPERATOR}"/>
+      </value-constraints>
+
+      <!-- Optional: defines when the context starts relative to the inducer.
+           Include this block ONLY if you want to set a custom start time. -->
+      <from boundary-point="{FROM_BOUND}">
+        <time-gap value="{FROM_SHIFT}" granularity="{FROM_GRANULARITY}"/>
+      </from>
+
+      <!-- Optional: defines when the context ends relative to the inducer.
+           Include this block ONLY if you want to set a custom end time. -->
+      <until boundary-point="{UNTIL_BOUND}">
+        <time-gap value="{UNTIL_SHIFT}" granularity="{UNTIL_GRANULARITY}"/>
+      </until>
+    </inducer-entity>
+  </inducer-entities>
+
+  <!-- Optional: defines concepts/events that can prematurely end the context -->
+  <clippers>
+    <clipper-entity id="{CLIPPER_ID}">
+      <clipper-value-constraints/>
+      <entity-value-constraints/>
+      <from boundary-point="{CLIPPER_BOUND}">
+        <time-gap value="{CLIPPER_SHIFT}" granularity="{CLIPPER_GRANULARITY}"/>
+      </from>
+    </clipper-entity>
+  </clippers>
+</context>
