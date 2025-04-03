@@ -1,3 +1,4 @@
+import json
 from lxml import etree
 from typing import Tuple, List
 import pandas as pd
@@ -104,12 +105,47 @@ class TAKok:
                 if doc.find(".//mapping-function") is None:
                     issues.append("Missing <mapping-function> element despite MAPPING specified in Excel.")
                 else:
-                    # NEW: Add threshold logic validation
-                    issues += self._validate_state_range_coverage(doc)
+                    try:
+                        # Parse Excel MAPPING column as a list of [min, max] lists
+                        excel_bins = json.loads(row["MAPPING"])
+                        excel_bins = [(float(b[0]), float(b[1])) for b in excel_bins if isinstance(b, list) and len(b) == 2]
+                    except Exception as e:
+                        issues.append(f"Failed to parse Excel MAPPING as bins: {e}")
+                        excel_bins = []
+
+                    # Add threshold logic validation
+                    issues += self._validate_state_range_coverage(doc, excel_bins)
 
         elif sheet == "events":
             if doc.find(".//Attributes") is None:
                 issues.append("Missing <Attributes> block in event.")
+        
+        elif sheet == "contexts":
+            inducers = doc.findall(".//inducer-entity")
+            if not inducers:
+                issues.append("Missing <inducer-entity> block in context.")
+
+            for inducer in inducers:
+                has_from = inducer.find(".//from") is not None
+                has_until = inducer.find(".//until") is not None
+                if not (has_from or has_until):
+                    issues.append(f"Inducer {inducer.get('id')} must have at least <from> or <until> block.")
+
+                for tag in ["from", "until"]:
+                    tag_block = inducer.find(tag)
+                    if tag_block is not None:
+                        tg = tag_block.find(".//time-gap")
+                        if tg is None or not tg.get("value") or not tg.get("granularity"):
+                            issues.append(f"{tag.title()} block in inducer {inducer.get('id')} missing value or granularity.")
+
+            clippers = doc.findall(".//clipper-entity")
+            for clipper in clippers:
+                if clipper.find(".//from") is None or clipper.find(".//time-gap") is None:
+                    issues.append(f"Clipper {clipper.get('id')} is missing <from> or <time-gap>.")
+                else:
+                    tg = clipper.find(".//time-gap")
+                    if not tg.get("value") or not tg.get("granularity"):
+                        issues.append(f"Clipper {clipper.get('id')} has invalid <time-gap> settings.")
 
         if issues:
             return False, "Business logic issues: " + "; ".join(issues)
@@ -138,133 +174,264 @@ class TAKok:
         }
         return tag_to_sheet.get(tag)
     
-    def _validate_state_range_coverage(self, doc: etree._Element) -> List[str]:
+    # def _validate_state_range_coverage(self, doc: etree._Element) -> List[str]:
+    #     """
+    #     Validates bin coverage in a <state> TAK's <mapping-function>. Ensures:
+    #     - Each bin has a valid comparison or logical structure.
+    #     - Bin descriptions are printed clearly (e.g., "x < 54", "70 <= x < 140").
+    #     - The full numeric range is covered without overlaps or gaps.
+
+    #     Returns:
+    #         List[str]: List of issues found, including faulty bins and problematic transitions.
+    #     """
+    #     def op_symbol(op: str) -> str:
+    #         return {
+    #             "smaller": "<",
+    #             "smaller-equal": "<=",
+    #             "bigger": ">",
+    #             "bigger-equal": ">=",
+    #             "equal": "==",
+    #             "not-equal": "!="
+    #         }.get(op, op)
+
+    #     def is_overlap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
+    #         if not upper or not lower:
+    #             return False
+    #         val_u, op_u = upper
+    #         val_l, op_l = lower
+
+    #         if val_u > val_l:
+    #             return True
+    #         if val_u < val_l:
+    #             return False
+
+    #         # Same value — check if both allow equality
+    #         return op_u in ("smaller-equal", "==") and op_l in ("bigger-equal", "==")
+
+    #     def is_gap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
+    #         if not upper or not lower:
+    #             return False
+    #         val_u, op_u = upper
+    #         val_l, op_l = lower
+
+    #         if val_u < val_l:
+    #             # Check if there's a gap between the ranges
+    #             return not (op_u in ("smaller-equal", "==") or op_l in ("bigger-equal", "=="))
+    #         return False  # val_u >= val_l → no gap
+
+    #     issues = []
+    #     bins = doc.findall(".//mapping-function-2-value")
+    #     ranges = []
+
+    #     if not bins:
+    #         return ["Missing <mapping-function-2-value> bins."]
+
+    #     for idx, bin_elem in enumerate(bins):
+    #         label = bin_elem.get("value", f"Bin {idx}")
+    #         eval_tree = bin_elem.find(".//evaluation-tree")
+    #         if eval_tree is None:
+    #             issues.append(f"Bin {idx} ('{label}'): Missing <evaluation-tree>.")
+    #             continue
+
+    #         logic = eval_tree.find(".//logical-function")
+    #         comp = eval_tree.find(".//comparison-function")
+    #         lower = upper = None
+    #         desc = ""
+
+    #         if logic is not None:
+    #             ops = logic.findall(".//comparison-function")
+    #             for op in ops:
+    #                 operator = op.get("comparison-operator")
+    #                 val = float(op.findtext(".//double"))
+    #                 if operator.startswith("bigger"):
+    #                     lower = (val, operator)
+    #                 elif operator.startswith("smaller"):
+    #                     upper = (val, operator)
+    #             if lower and upper:
+    #                 desc = f"x {op_symbol(lower[1])} {lower[0]} AND x {op_symbol(upper[1])} {upper[0]}"
+    #             else:
+    #                 desc = "Invalid logical-function"
+    #         elif comp is not None:
+    #             operator = comp.get("comparison-operator")
+    #             val = float(comp.findtext(".//double"))
+    #             if operator.startswith("bigger"):
+    #                 lower = (val, operator)
+    #             elif operator.startswith("smaller"):
+    #                 upper = (val, operator)
+    #             desc = f"x {op_symbol(operator)} {val}"
+    #         else:
+    #             issues.append(f"Bin {idx} ('{label}'): No valid comparison or logic.")
+    #             continue
+
+    #         ranges.append({
+    #             "idx": idx,
+    #             "label": label,
+    #             "lower": lower,
+    #             "upper": upper,
+    #             "description": desc
+    #         })
+
+    #     # Describe all ranges
+    #     for r in ranges:
+    #         issues.append(f"Bin {r['idx']} ('{r['label']}'): {r['description']}")
+
+    #     # Sort by lower bound value
+    #     sorted_ranges = sorted(ranges, key=lambda r: r['lower'][0] if r['lower'] else float('-inf'))
+
+    #     # Check gaps and overlaps between adjacent bins
+    #     for i in range(len(sorted_ranges) - 1):
+    #         r1 = sorted_ranges[i]
+    #         r2 = sorted_ranges[i + 1]
+    #         upper1 = r1["upper"]
+    #         lower2 = r2["lower"]
+
+    #         if upper1 and lower2:
+    #             print(f"🧪 Checking gap/overlap between Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}')")
+    #             print(f"    Upper: {upper1}, Lower: {lower2}")
+
+    #             if is_overlap(upper1, lower2):
+    #                 issues.append(
+    #                     f"Range overlap: Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}') "
+    #                     f"overlap between {lower2[0]} and {upper1[0]}."
+    #                 )
+    #             elif is_gap(upper1, lower2):
+    #                 issues.append(
+    #                     f"Range gap: Bin {r1['idx']} ('{r1['label']}') ends at {upper1[0]}, "
+    #                     f"but Bin {r2['idx']} ('{r2['label']}') starts at {lower2[0]}."
+    #                 )
+
+    #     return issues
+
+
+    def _validate_state_range_coverage(self, doc: etree._Element, excel_bins: List[Tuple[float, float]]) -> List[str]:
         """
-        Validates bin coverage in a <state> TAK's <mapping-function>. Ensures:
-        - Each bin has a valid comparison or logical structure.
-        - Bin descriptions are printed clearly (e.g., "x < 54", "70 <= x < 140").
-        - The full numeric range is covered without overlaps or gaps.
+        Validates the <mapping-function> coverage in a <state> TAK:
+        - All bins must follow the format: lower_bound <= x < upper_bound
+        - Validates no overlaps or gaps between adjacent bins
+        - Verifies the thresholds used in XML match those defined in Excel
+
+        Args:
+            doc: The parsed XML <state> element
+            excel_bins: A list of (min, max) pairs from the Excel's MAPPING column
 
         Returns:
-            List[str]: List of issues found, including faulty bins and problematic transitions.
+            A list of human-readable issues found in the XML definition.
         """
-        def op_symbol(op: str) -> str:
-            return {
-                "smaller": "<",
-                "smaller-equal": "<=",
-                "bigger": ">",
-                "bigger-equal": ">=",
-                "equal": "==",
-                "not-equal": "!="
-            }.get(op, op)
+        def extract_bounds(bin_elem) -> Tuple[Tuple[float, str], Tuple[float, str]]:
+            logic = bin_elem.find(".//logical-function")
+            if logic is not None:
+                comparisons = logic.findall(".//comparison-function")
+                lower = upper = None
+                for comp in comparisons:
+                    op = comp.get("comparison-operator")
+                    val = float(comp.findtext(".//double"))
+                    if op.startswith("bigger"):
+                        lower = (val, op)
+                    elif op.startswith("smaller"):
+                        upper = (val, op)
+                return lower, upper
+            return None, None
 
-        def is_overlap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
-            if not upper or not lower:
-                return False
-            val_u, op_u = upper
-            val_l, op_l = lower
-
+        def is_overlap(prev_upper, curr_lower):
+            val_u, op_u = prev_upper
+            val_l, op_l = curr_lower
             if val_u > val_l:
                 return True
-            if val_u < val_l:
-                return False
+            elif val_u == val_l:
+                return not (op_u == "smaller" and op_l == "bigger-equal")
+            return False
 
-            # Same value — check if both allow equality
-            return op_u in ("smaller-equal", "==") and op_l in ("bigger-equal", "==")
-
-        def is_gap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
-            if not upper or not lower:
-                return False
-            val_u, op_u = upper
-            val_l, op_l = lower
-
-            if val_u < val_l:
-                # Check if there's a gap between the ranges
-                return not (op_u in ("smaller-equal", "==") or op_l in ("bigger-equal", "=="))
-            return False  # val_u >= val_l → no gap
+        def is_gap(prev_upper, curr_lower):
+            val_u, _ = prev_upper
+            val_l, _ = curr_lower
+            return val_u != val_l
+        
+        def describe_range(lower: Tuple[float, str], upper: Tuple[float, str]) -> str:
+            """
+            Convert a lower and upper bound with operators into a readable string like:
+            '70 <= x < 140'
+            """
+            op_map = {
+                "bigger": ">",
+                "bigger-equal": ">=",
+                "smaller": "<",
+                "smaller-equal": "<="
+            }
+            lower_op = op_map.get(lower[1], lower[1])
+            upper_op = op_map.get(upper[1], upper[1])
+            return f"x {lower_op} {lower[0]} AND x {upper_op} {upper[0]}"
 
         issues = []
         bins = doc.findall(".//mapping-function-2-value")
-        ranges = []
-
         if not bins:
             return ["Missing <mapping-function-2-value> bins."]
 
+        parsed_bins = []
         for idx, bin_elem in enumerate(bins):
             label = bin_elem.get("value", f"Bin {idx}")
-            eval_tree = bin_elem.find(".//evaluation-tree")
-            if eval_tree is None:
-                issues.append(f"Bin {idx} ('{label}'): Missing <evaluation-tree>.")
+            lower, upper = extract_bounds(bin_elem)
+
+            if not lower or not upper:
+                issues.append(f"Bin {idx} ('{label}') must contain BOTH lower and upper bounds using logical-function.")
                 continue
 
-            logic = eval_tree.find(".//logical-function")
-            comp = eval_tree.find(".//comparison-function")
-            lower = upper = None
-            desc = ""
-
-            if logic is not None:
-                ops = logic.findall(".//comparison-function")
-                for op in ops:
-                    operator = op.get("comparison-operator")
-                    val = float(op.findtext(".//double"))
-                    if operator.startswith("bigger"):
-                        lower = (val, operator)
-                    elif operator.startswith("smaller"):
-                        upper = (val, operator)
-                if lower and upper:
-                    desc = f"x {op_symbol(lower[1])} {lower[0]} AND x {op_symbol(upper[1])} {upper[0]}"
-                else:
-                    desc = "Invalid logical-function"
-            elif comp is not None:
-                operator = comp.get("comparison-operator")
-                val = float(comp.findtext(".//double"))
-                if operator.startswith("bigger"):
-                    lower = (val, operator)
-                elif operator.startswith("smaller"):
-                    upper = (val, operator)
-                desc = f"x {op_symbol(operator)} {val}"
-            else:
-                issues.append(f"Bin {idx} ('{label}'): No valid comparison or logic.")
-                continue
-
-            ranges.append({
+            range_desc = describe_range(lower, upper)
+            issues.append(f"Bin {idx} ('{label}') range: {range_desc}")
+            parsed_bins.append({
                 "idx": idx,
                 "label": label,
                 "lower": lower,
                 "upper": upper,
-                "description": desc
+                "desc": range_desc
             })
 
-        # Describe all ranges
-        for r in ranges:
-            issues.append(f"Bin {r['idx']} ('{r['label']}'): {r['description']}")
+        # Sort bins by lower value
+        sorted_bins = sorted(parsed_bins, key=lambda b: b["lower"][0])
+        actual_issues = []
 
-        # Sort by lower bound value
-        sorted_ranges = sorted(ranges, key=lambda r: r['lower'][0] if r['lower'] else float('-inf'))
+        for i in range(len(sorted_bins) - 1):
+            b1 = sorted_bins[i]
+            b2 = sorted_bins[i + 1]
 
-        # Check gaps and overlaps between adjacent bins
-        for i in range(len(sorted_ranges) - 1):
-            r1 = sorted_ranges[i]
-            r2 = sorted_ranges[i + 1]
-            upper1 = r1["upper"]
-            lower2 = r2["lower"]
+            if is_overlap(b1["upper"], b2["lower"]):
+                actual_issues.append(
+                    f"Overlap between Bin {b1['idx']} ('{b1['label']}') [{b1['desc']}] and "
+                    f"Bin {b2['idx']} ('{b2['label']}') [{b2['desc']}]."
+                )
+            elif is_gap(b1["upper"], b2["lower"]):
+                actual_issues.append(
+                    f"Gap between Bin {b1['idx']} ('{b1['label']}') [{b1['desc']}] and "
+                    f"Bin {b2['idx']} ('{b2['label']}') [{b2['desc']}]."
+                )
 
-            if upper1 and lower2:
-                print(f"🧪 Checking gap/overlap between Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}')")
-                print(f"    Upper: {upper1}, Lower: {lower2}")
+        xml_bounds_set = {round(b["lower"][0], 6) for b in sorted_bins}.union(
+            {round(b["upper"][0], 6) for b in sorted_bins}
+        )
+        excel_bounds_set = {round(low, 6) for low, high in excel_bins}.union(
+            {round(high, 6) for low, high in excel_bins}
+        )
 
-                if is_overlap(upper1, lower2):
-                    issues.append(
-                        f"Range overlap: Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}') "
-                        f"overlap between {lower2[0]} and {upper1[0]}."
-                    )
-                elif is_gap(upper1, lower2):
-                    issues.append(
-                        f"Range gap: Bin {r1['idx']} ('{r1['label']}') ends at {upper1[0]}, "
-                        f"but Bin {r2['idx']} ('{r2['label']}') starts at {lower2[0]}."
-                    )
+        missing_in_xml = excel_bounds_set - xml_bounds_set
+        if missing_in_xml:
+            actual_issues.append(f"Threshold mismatch: The following values exist in Excel but not in XML: {sorted(missing_in_xml)}")
 
-        return issues
+        # Threshold value checks
+        xml_bounds_set = {round(b["lower"][0], 6) for b in sorted_bins}.union(
+            {round(b["upper"][0], 6) for b in sorted_bins}
+        )
+        excel_bounds_set = {round(low, 6) for low, high in excel_bins}.union(
+            {round(high, 6) for low, high in excel_bins}
+        )
+
+        missing_from_excel = sorted(xml_bounds_set - excel_bounds_set)
+        if missing_from_excel:
+            actual_issues.append(f"These values are used in XML but not found in Excel MAPPING: {missing_from_excel}")
+
+        # Only show range descriptions if there is a problem
+        if actual_issues:
+            bin_descriptions = [f"Bin {b['idx']} ('{b['label']}') range: {b['desc']}" for b in sorted_bins]
+            return bin_descriptions + actual_issues
+        return []
 
 
 if __name__ == "__main__":

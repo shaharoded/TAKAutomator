@@ -15,40 +15,34 @@
       <!-- ordinal bin ranges are under column MAPPING, and their matched label under STATE_LABELS -->
       <!-- values are matched like MAPPING[idx] -> STATE_LABELS[idx] -->
       <!-- 
-      Mapping operator rules:
-      1. If rank-selection-criteria="min", the XML must process bins from smallest to largest (ascending).
-        - First bin: x < threshold
-        - Middle bin/s: threshold1 <= x < threshold2 (use logical AND)
-        - Last bin: x >= threshold
-        Do NOT use multiple `>`, `>=` comparisons in sequence.
-        Each bin must be exclusive and together they should fully cover the possible values.
+      Mapping operator rules (MUST use: lower_bound <= x < upper_bound):
 
-      2. If rank-selection-criteria="max", process bins from largest to smallest (descending).
-        - First bin: x > threshold
-        - Middle bin/s: threshold1 >= x > threshold2
-        - Last bin: x <= threshold
-        Do NOT use multiple `<` , `<=` comparisons in sequence.
-        Each bin must be exclusive and together they should fully cover the possible values.
+      ✔ Use this format for **all bins**, including the first and last:
+        → Always write ranges as: threshold1 <= x < threshold2
+        → Do NOT use <, <=, >=, > alone
+        → Avoid "x < threshold" and "x >= threshold" forms
 
-      Each label in STATE_LABELS must match the bin condition from MAPPING.
-      Ranges appear like [min_val, max_val] per bin in the business logic.
+      ✔ Implement with a logical-function (AND of two comparisons):
+        <comparison-function comparison-operator="bigger-equal">
+          <concept-id-allowed-values id="..."/>
+          <double>{lower_bound}</double>
+        </comparison-function>
+        <comparison-function comparison-operator="smaller">
+          <concept-id-allowed-values id="..."/>
+          <double>{upper_bound}</double>
+        </comparison-function>
+
+      ✔ Each bin must have:
+        - Both lower and upper bounds
+        - Unique, non-overlapping, and continuous ranges
+        - Corresponding label from STATE_LABELS at same index
+
+      ✔ Ranges appear like [min_val, max_val] in Excel.
       -->
-      <mapping-function-2-value order="0" value="{STATE_LABELS[0]}">
-        <evaluation-tree data-type="comparison-function">
-          <comparison-function comparison-operator="smaller">
-            <left data-type="concept-id-allowed-values">
-              <concept-id-allowed-values id="{DERIVED_FROM}"/>
-            </left>
-            <right data-type="double">
-              <double>{THRESHOLD1}</double>
-            </right>
-          </comparison-function>
-        </evaluation-tree>
-      </mapping-function-2-value>
 
       <!-- Example: RANGE THRESHOLD1 <= x < THRESHOLD2 -->
       <!-- Can be done using a logical-operator -->
-      <mapping-function-2-value order="1" value="{STATE_LABELS[1]}">
+      <mapping-function-2-value order="0" value="{STATE_LABELS[1]}">
         <evaluation-tree data-type="logical-function">
           <logical-function logical-operator="and">
             <operands>
@@ -76,25 +70,10 @@
           </logical-function>
         </evaluation-tree>
       </mapping-function-2-value>
-
-      <!-- Example: x >= THRESHOLD2 -->
-      <mapping-function-2-value order="2" value="{STATE_LABELS[2]}">
-        <evaluation-tree data-type="comparison-function">
-          <comparison-function comparison-operator="bigger-equal">
-            <left data-type="concept-id-allowed-values">
-              <concept-id-allowed-values id="{DERIVED_FROM}"/>
-            </left>
-            <right data-type="double">
-              <double>{THRESHOLD2}</double>
-            </right>
-          </comparison-function>
-        </evaluation-tree>
-      </mapping-function-2-value>
-      <!-- Add more <mapping-function-2-value> blocks as needed -->
-    </mapping-functions-to-values>
+      <!-- Add as many blocks like this as needed (exactly len(MAPPING) blocks) -->
+      <!-- Be sure to increment the order, match the value (STATE_LABELS[idx]) -->
+    <mapping-functions-to-values>
   </mapping-function>
-
-
   <ordinal-allowed-values output-type="ordinal">
     <persistence>
       <global-persistence granularity="second" behavior="pos-pos">
