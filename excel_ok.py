@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 from typing import Tuple, List
+from datetime import datetime
 
 # Local Code
 from Config.validator_config import ValidatorConfig
@@ -96,8 +97,14 @@ class Excelok:
                         errors.append(f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for numeric-raw-concept.")
             if typ == "time-raw-concept":
                 for col in ["ALLOWED_VALUES_MIN", "ALLOWED_VALUES_MAX"]:
-                    if col not in df.columns or pd.isna(row[col]) or row[col].strip() == "":
+                    if col not in df.columns or pd.isna(row[col]) or str(row[col]).strip() == "":
                         errors.append(f"Row {idx+2} (ID={row['ID']}): '{col}' must be specified for time-raw-concept.")
+                    else:
+                        value = str(row[col]).strip()
+                        try:
+                            datetime.strptime(value, "%d/%m/%Y")
+                        except ValueError:
+                            errors.append(f"Row {idx+2} (ID={row['ID']}): '{col}' has invalid date format (expected DD/MM/YYYY).")
             elif typ == "nominal-raw-concept":
                 if "ALLOWED_VALUES_NOMINAL" not in df.columns or pd.isna(row["ALLOWED_VALUES_NOMINAL"]) or row["ALLOWED_VALUES_NOMINAL"].strip() == "":
                     errors.append(f"Row {idx+2} (ID={row['ID']}): 'ALLOWED_VALUES_NOMINAL' must be specified for nominal-raw-concept.")
