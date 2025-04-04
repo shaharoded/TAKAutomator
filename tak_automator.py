@@ -70,8 +70,10 @@ class TAKAutomator:
                 continue
 
             df = excel[sheet].dropna(how='all')
-            if df.shape[0] <= 1:
+            if df.empty:
+                print(f"[INFO]: Skipping sheet: {sheet} ({df.shape[0]} rows)")
                 continue
+            print(f"[INFO]: Processing sheet: {sheet} ({df.shape[0]} rows)")
 
             sheet_folder = os.path.join("TAKs", sheet)
             os.makedirs(sheet_folder, exist_ok=True)
@@ -150,7 +152,7 @@ class TAKAutomator:
         for key, value in row.items():
             if key == 'NOTES':
                 continue
-            if pd.isna(value) or value == "":
+            if pd.isna(value) or value == "" or str(value).strip().lower() == "nan":
                 continue
             if isinstance(value, str) and value.strip().startswith("[") and value.strip().endswith("]"):
                 lines.append(f"- {key}: {value} (list)")

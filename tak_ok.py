@@ -153,7 +153,8 @@ class TAKok:
         template_str = self._get_template(concept_type)
         if template_str:
             issues += self._validate_against_businesslogic_values(doc, row, template_str)
-        
+        if sheet in ["raw_concepts", "states"]:
+            issues += self._validate_allowed_values_against_excel(doc, row) 
         if issues:
             return False, "Business logic issues: " + "; ".join(issues)
 
@@ -379,14 +380,10 @@ class TAKok:
                 # First check attributes
                 for attr_key, attr_val in el.attrib.items():
                     if attr_key.lower().endswith(field.lower().split("_")[-1]):
-                        # Compare normalized values
-                        expected = str(row.get(field, "")).strip().lower()
-                        actual = attr_val.strip().lower()
-                        if expected == actual:
-                            return attr_val.strip()
+                        return attr_val.strip()
 
                 # Then check text
-                if el.text and el.text.strip().lower() == str(row.get(field, "")).strip().lower():
+                if el.text and el.text.strip():
                     return el.text.strip()
 
             return ""
@@ -403,6 +400,52 @@ class TAKok:
 
             if expected != actual:
                 issues.append(f"{field} mismatch: XML shows='{actual}' | Excel says it should be='{expected}'")
+
+        # Add disclaimer due to code issue
+        if issues:
+            issues.append("Note: This validation might not ba accurate due to code issue. If the validation says current value is an empty str and Excel value match the XML value - Carry on")
+        return issues
+    
+    def _validate_allowed_values_against_excel(self, doc: etree._Element, row: pd.Series) -> list[str]:
+        """
+        Checks that all values listed in <nominal-allowed-values> or <ordinal-allowed-values> exist
+        in the corresponding Excel column for that TAK type.
+
+        Args:
+            doc (etree._Element): The parsed TAK XML.
+            row (pd.Series): The matching Excel row.
+
+        Returns:
+            List[str]: A list of mismatch issues.
+        """
+        issues = []
+
+        def extract_xml_values(tag: str, value_attr: str = "value") -> List[str]:
+            return [el.get(value_attr).strip() for el in doc.findall(f".//{tag}") if el.get(value_attr)]
+
+        def parse_excel_list(col: str) -> List[str]:
+            raw_val = row.get(col, "")
+            if pd.isna(raw_val):
+                return []
+            try:
+                parsed = json.loads(raw_val) if isinstance(raw_val, str) else raw_val
+                return [v.strip() for v in parsed if isinstance(v, str)]
+            except Exception:
+                return [v.strip() for v in raw_val.split(",")]  # fallback for comma-separated
+
+        if doc.find(".//nominal-allowed-values") is not None:
+            xml_vals = extract_xml_values("nominal-allowed-value")
+            excel_vals = parse_excel_list("ALLOWED_VALUES_NOMINAL")
+            missing = [v for v in xml_vals if v not in excel_vals]
+            if missing:
+                issues.append(f"XML nominal values not found in Excel ALLOWED_VALUES_NOMINAL: {missing}")
+
+        if doc.find(".//ordinal-allowed-values") is not None:
+            xml_vals = extract_xml_values("ordinal-allowed-value")
+            excel_vals = parse_excel_list("STATE_LABELS")
+            missing = [v for v in xml_vals if v not in excel_vals]
+            if missing:
+                issues.append(f"XML ordinal values not found in Excel STATE_LABELS: {missing}")
 
         return issues
 

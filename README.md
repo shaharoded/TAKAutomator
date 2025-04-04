@@ -102,7 +102,7 @@ automator.run(test_mode=True)
     - trends
     - states to non-numeric concepts? No format / validation at the moment
     - states and contexts can only handle 1 inducer/derived ID at the moment. To expand we'll need to enhance the logic.
-3. Range states still needs some work, as the LLM outputs non-covering ranges (for example, multiple `x >= thresh_i` for multiple thresholds in a row, causing the abstraction to ignore some state values). `TAKok` enforces and notify on these restrictions but the model is slow to adapt.
+3. Validation problem in TAKok for raw_concepts, as it will somtime fail to find the actual value in the XML to compare against the Excel, which will result in a warning that is not true. Mostly annoying but harmless.
 
 ## Notes
 - Templates are stored under tak_templates/ and must match Excel concept types.

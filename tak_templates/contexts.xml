@@ -4,38 +4,29 @@
   <standard-terms/>
   <synonyms/>
 
-  <!-- Required: Semantic rules that guide how the context interacts with others -->
-  <temporal-semantic 
-      downward-hereditary="{TEMPORAL_downward-hereditary}" 
-      forward="{TEMPORAL_forward}" 
-      backward="{TEMPORAL_backward}" 
-      solid="{TEMPORAL_solid}" 
-      concatenable="{TEMPORAL_concatenable}" 
-      gestalt="{TEMPORAL_gestalt}"/>
+  <!-- Required: Temporal properties controlling context propagation -->
+  <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
 
-  <!-- Required: defines what triggers (induces) the context -->
+  <!-- Required: One or more entities that induce the context -->
   <inducer-entities>
     <inducer-entity id="{INDUCER_ID}">
-      <!-- Required: Value(s) that trigger the context -->
       <value-constraints>
         <value-constraint value="{INDUCER_VALUE}" operator="{INDUCER_OPERATOR}"/>
       </value-constraints>
 
-      <!-- Optional: defines when the context starts relative to the inducer.
-           Include this block ONLY if you want to set a custom start time. -->
+      <!-- Optional: include only if FROM_BOUND is present -->
       <from boundary-point="{FROM_BOUND}">
         <time-gap value="{FROM_SHIFT}" granularity="{FROM_GRANULARITY}"/>
       </from>
 
-      <!-- Optional: defines when the context ends relative to the inducer.
-           Include this block ONLY if you want to set a custom end time. -->
+      <!-- Optional: include only if UNTIL_BOUND is present -->
       <until boundary-point="{UNTIL_BOUND}">
         <time-gap value="{UNTIL_SHIFT}" granularity="{UNTIL_GRANULARITY}"/>
       </until>
     </inducer-entity>
   </inducer-entities>
 
-  <!-- Optional: defines concepts/events that can prematurely end the context -->
+  <!-- Optional: include only if CLIPPER_ID is present -->
   <clippers>
     <clipper-entity id="{CLIPPER_ID}">
       <clipper-value-constraints/>
@@ -45,4 +36,5 @@
       </from>
     </clipper-entity>
   </clippers>
+
 </context>

@@ -18,7 +18,7 @@
       </local-persistence>
     </persistence>
     <values>
-      <nominal-allowed-value value="{ALLOWED_VALUES_NOMINAL}"/>
+      <nominal-allowed-value value="{ALLOWED_VALUE_NOMINAL, from the list}"/>
       <!-- Add more <nominal-allowed-value> blocks if needed -->
     </values>
   </nominal-allowed-values>

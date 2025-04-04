@@ -53,10 +53,10 @@ class Excelok:
                 msgs = "\n".join(msgs)
                 errors.append(f"events: \n{msgs}")
         if "contexts" in self.sheets:
-            valid, msgs = self.validate_events(self.sheets["events"])
+            valid, msgs = self.validate_contexts(self.sheets["contexts"])
             if not valid:
                 msgs = "\n".join(msgs)
-                errors.append(f"events: \n{msgs}")
+                errors.append(f"contexts: \n{msgs}")
         
         # Validate unique IDs globally
         global_ids = sum([self.sheets[sheet]['ID'].dropna().tolist() for sheet in ValidatorConfig.REQUIRED_SHEETS if sheet in self.sheets], [])
@@ -302,7 +302,7 @@ class Excelok:
             return False, errors        
         return True, ["Events are valid."]
     
-    def validate_contexts(df: pd.DataFrame, valid_ids: set) -> Tuple[bool, List[str]]:
+    def validate_contexts(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
         """
         Validates the context TAKs Excel sheet.
 
@@ -312,15 +312,14 @@ class Excelok:
         - Each inducer has at least a 'from' or 'until' block.
         - If 'from' or 'until' is present, its subfields (value and granularity) must exist.
         - If a clipper is defined, all its related fields must be non-empty and valid.
-
-        Parameters:
-        - df: Contexts DataFrame.
-        - valid_ids: Set of valid concept/event/state IDs.
-
-        Returns:
-        - Tuple of validation result (bool) and list of error messages.
         """
         errors = []
+
+        # Dynamically compute all valid IDs from the other TAK sheets
+        valid_ids = set()
+        for sheet in ["raw_concepts", "states", "events"]:
+            if sheet in self.sheets:
+                valid_ids.update(self.sheets[sheet]["ID"].dropna().astype(str).tolist())
 
         # Check for duplicate IDs
         if df["ID"].duplicated().any():
@@ -336,7 +335,6 @@ class Excelok:
             elif inducer_id not in valid_ids:
                 row_errors.append(f"INDUCER_ID '{inducer_id}' does not exist in the TAK entity list.")
 
-            # Validate inducer blocks: at least one of 'from' or 'until' is present
             from_ok = str(row.get("FROM_BOUND", "")).strip() != ""
             until_ok = str(row.get("UNTIL_BOUND", "")).strip() != ""
 
@@ -344,18 +342,17 @@ class Excelok:
                 row_errors.append("At least one of FROM_BOUND or UNTIL_BOUND must be defined for the inducer.")
 
             if from_ok:
-                if pd.isna(row.get("FROM_SHIFT")) or pd.isna(row.get("FROM_GRANULARITY")):
+                if str(row.get("FROM_SHIFT", "")).strip() == "" or str(row.get("FROM_GRANULARITY", "")).strip() == "":
                     row_errors.append("FROM_SHIFT and FROM_GRANULARITY must be provided if FROM_BOUND is specified.")
 
             if until_ok:
-                if pd.isna(row.get("UNTIL_SHIFT")) or pd.isna(row.get("UNTIL_GRANULARITY")):
+                if str(row.get("UNTIL_SHIFT", "")).strip() == "" or str(row.get("UNTIL_GRANULARITY", "")).strip() == "":
                     row_errors.append("UNTIL_SHIFT and UNTIL_GRANULARITY must be provided if UNTIL_BOUND is specified.")
 
-            # Validate clipper if defined
             clipper_id = str(row.get("CLIPPER_ID", "")).strip()
             if clipper_id:
                 for field in ["CLIPPER_BOUND", "CLIPPER_SHIFT", "CLIPPER_GRANULARITY"]:
-                    if pd.isna(row.get(field)) or str(row.get(field)).strip() == "":
+                    if str(row.get(field, "")).strip() == "":
                         row_errors.append(f"{field} must be defined if CLIPPER_ID is present.")
 
             if row_errors:

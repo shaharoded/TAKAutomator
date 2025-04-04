@@ -1,0 +1,1340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XML Spy v4.1 U (http://www.xmlspy.com) by Ben-Gurion University (Ben-Gurion University) -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<!--complexTypes-->
+	<xs:complexType name="tak-entity">
+		<xs:sequence>
+			<xs:element name="categories">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="category" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="standard-terms">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="standard-term" minOccurs="0" maxOccurs="unbounded">
+							<xs:complexType>
+								<xs:attribute name="vocabulary" type="xs:string" use="required"/>
+								<xs:attribute name="key" type="xs:string" use="required"/>
+								<xs:attribute name="cui" type="xs:string" use="optional"/>
+								<xs:attribute name="description" type="xs:string" use="optional"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="synonyms">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="synonym" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="temporal-semantic">
+				<xs:complexType>
+					<xs:attribute name="downward-hereditary" type="xs:boolean" use="required" default="true"/>
+					<xs:attribute name="forward" type="xs:boolean" use="required" default="true"/>
+					<xs:attribute name="backward" type="xs:boolean" use="required" default="true"/>
+					<xs:attribute name="solid" type="xs:boolean" use="required" default="true"/>
+					<xs:attribute name="concatenable" type="xs:boolean" use="required" default="true"/>
+					<xs:attribute name="gestalt" type="xs:boolean" use="required" default="true"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="id" type="xs:long" use="required"/>
+		<xs:attribute name="name" type="xs:string" use="required"/>
+		<xs:attribute name="concept-type" type="concept-type-enum" use="required"/>
+		<xs:attribute name="description" type="xs:string" use="optional"/>
+		<xs:attribute name="semi-formal" type="xs:string" use="optional"/>
+		<xs:attribute name="source" type="xs:string" use="optional"/>
+	</xs:complexType>
+	<xs:complexType name="concept">
+		<xs:complexContent>
+			<xs:extension base="tak-entity">
+				<xs:sequence>
+					<xs:element name="clippers">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element ref="clipper-entity" minOccurs="0" maxOccurs="unbounded"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:element name="context">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="tak-entity">
+					<xs:sequence>
+						<xs:element name="inducer-entities">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="inducer-entity" maxOccurs="unbounded">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="value-constraints" minOccurs="0">
+													<xs:complexType>
+														<xs:sequence>
+															<xs:element name="value-constraint" type="value-constraintType" maxOccurs="unbounded"/>
+														</xs:sequence>
+													</xs:complexType>
+												</xs:element>
+												<xs:element name="from" type="boundary-shift" minOccurs="0"/>
+												<xs:element name="until" type="boundary-shift" minOccurs="0"/>
+											</xs:sequence>
+											<xs:attribute name="id" type="xs:long" use="required"/>
+											<xs:attribute name="name" type="xs:string" use="optional"/>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="clippers">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element ref="clipper-entity" minOccurs="0" maxOccurs="unbounded"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="allowed-values">
+		<xs:sequence>
+			<xs:element ref="persistence"/>
+		</xs:sequence>
+		<xs:attribute name="output-type" type="raw-type-enum" use="required"/>
+	</xs:complexType>
+	<!--elements-->
+	<xs:element name="persistence">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="global-persistence">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="interpolation-table">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="rows">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="row" minOccurs="0" maxOccurs="unbounded">
+														<xs:complexType>
+															<xs:sequence>
+																<xs:element name="columns">
+																	<xs:complexType>
+																		<xs:sequence>
+																			<xs:element name="column" type="xs:integer" minOccurs="0" maxOccurs="unbounded"/>
+																		</xs:sequence>
+																	</xs:complexType>
+																</xs:element>
+															</xs:sequence>
+														</xs:complexType>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="behavior" type="persistence-behavior-enum" use="optional"/>
+						<xs:attribute name="granularity" type="time-granularity-enum" use="required"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="local-persistence">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="local-persistence-function-based" minOccurs="0">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="good-before-function" type="xs:string"/>
+										<xs:element name="good-after-function" type="xs:string"/>
+									</xs:sequence>
+									<xs:attribute name="threshold-before" type="xs:long"/>
+									<xs:attribute name="threshold-after" type="xs:long"/>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="good-before" type="duration"/>
+							<xs:element name="good-after" type="duration"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="event">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="tak-entity">
+					<xs:sequence>
+						<xs:element name="Attributes">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Attribute-id" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="Event-Extend-Id" type="xs:string" minOccurs="0"/>
+						<xs:element name="Event-Types" type="xs:string" minOccurs="0"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="raw-concept">
+		<xs:complexContent>
+			<xs:extension base="concept">
+				<xs:sequence>
+					<xs:element name="event-id" type="xs:long" minOccurs="0"/>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:element name="boolean-raw-concept">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="raw-concept">
+					<xs:sequence>
+						<xs:element ref="boolean-allowed-values"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="numeric-raw-concept">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="raw-concept">
+					<xs:sequence>
+						<xs:element ref="numeric-allowed-values"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="ordinal-raw-concept">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="raw-concept">
+					<xs:sequence>
+						<xs:element ref="ordinal-allowed-values"/>
+					</xs:sequence>
+					<xs:attribute name="ordering" type="ascending-descending-enum" use="optional" default="asc"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="nominal-raw-concept">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="raw-concept">
+					<xs:sequence>
+						<xs:element ref="nominal-allowed-values"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="time-raw-concept">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="raw-concept">
+					<xs:sequence>
+						<xs:element ref="time-allowed-values"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<!--general attributes-->
+	<xs:attribute name="granularity" use="required">
+		<xs:simpleType>
+			<xs:restriction base="xs:string">
+				<xs:enumeration value="seconds-of-minute"/>
+				<xs:enumeration value="minutes-of-hour"/>
+				<xs:enumeration value="hours-of-day"/>
+				<xs:enumeration value="day-of-week"/>
+				<xs:enumeration value="day-of-month"/>
+				<xs:enumeration value="day-of-year"/>
+				<xs:enumeration value="week-of-year"/>
+				<xs:enumeration value="month-of-year"/>
+				<xs:enumeration value="year-of-century"/>
+			</xs:restriction>
+		</xs:simpleType>
+	</xs:attribute>
+	<xs:element name="boolean-allowed-value">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="persistence"/>
+			</xs:sequence>
+			<xs:attribute name="value" type="xs:boolean" use="required" default="true"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="ordinal-allowed-value" type="ordinal-allowed-valueType"/>
+	<xs:element name="nominal-allowed-value">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="persistence" minOccurs="0"/>
+			</xs:sequence>
+			<xs:attribute name="value" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="gradient-trend-allowed-value"/>
+	<xs:element name="clipper-entity">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="clipper-value-constraints">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="clipper-value-constraint" type="value-constraint" minOccurs="0" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="entity-value-constraints">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="entity-value-constraint" type="value-constraint" minOccurs="0" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="from" type="boundary-shift"/>
+			</xs:sequence>
+			<xs:attribute name="id" type="xs:long" use="required"/>
+			<xs:attribute name="name" type="xs:string" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="value-constraint">
+		<xs:attribute name="value" type="xs:string" use="required"/>
+		<xs:attribute name="operator" type="comparison-operator-enum" use="required"/>
+		<xs:attribute name="event-attr-id" type="xs:string" use="optional"/>
+	</xs:complexType>
+	<xs:complexType name="point-x-interval">
+		<xs:attribute name="boundary-point" type="boundary-point-enum"/>
+	</xs:complexType>
+	<xs:complexType name="duration">
+		<xs:attribute name="value" type="xs:double" use="required"/>
+		<xs:attribute name="granularity" type="time-granularity-enum" use="required"/>
+	</xs:complexType>
+	<xs:element name="state" type="stateType"/>
+	<xs:complexType name="abstract-concept">
+		<xs:complexContent>
+			<xs:extension base="concept">
+				<xs:sequence>
+					<xs:element name="derived-from">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element name="derived-from-id" type="xs:long" maxOccurs="unbounded"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element name="abstraction-at-contexts">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element name="abstraction-at-context" type="abstraction-at-context" minOccurs="0" maxOccurs="unbounded"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="abstraction-at-context">
+		<xs:sequence>
+			<xs:element name="at-context" type="at-context"/>
+			<xs:choice>
+				<xs:element ref="trend-at-context"/>
+				<xs:element ref="rate-at-context"/>
+				<xs:element ref="state-at-context"/>
+				<xs:element ref="gradient-at-context"/>
+				<xs:element ref="pattern-at-context"/>
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="at-context">
+		<xs:sequence>
+			<xs:element name="necessary-contexts">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="necessary-context-id" type="xs:long" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="exclusion-contexts">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="exclusion-context-id" type="xs:long" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="local-function">
+		<xs:complexContent>
+			<xs:extension base="internal-function"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="internal-function">
+		<xs:complexContent>
+			<xs:extension base="function"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="function">
+		<xs:sequence>
+			<xs:element name="operands">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="operand" type="operand" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:element name="mapping-function">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="mapping-functions-to-values">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="mapping-function-2-value" minOccurs="0" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="rank-selection-criteria" type="min-max-enum" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="mapping-function-2-value">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="evaluation-tree" type="logical-operand"/>
+			</xs:sequence>
+			<xs:attribute name="order" type="xs:int" use="required"/>
+			<xs:attribute name="value" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="logical-operand">
+		<xs:choice>
+			<xs:element ref="comparison-function"/>
+			<xs:element ref="logical-function"/>
+			<xs:element ref="concept-id-allowed-values"/>
+			<xs:element ref="time-comparison-function"/>
+		</xs:choice>
+		<xs:attribute name="data-type" type="logical-data-type-enum" use="required"/>
+	</xs:complexType>
+	<xs:complexType name="operand">
+		<xs:attribute name="data-type" type="xs:string" use="required"/>
+	</xs:complexType>
+	<!-- enumerations: -->
+	<xs:simpleType name="and-or-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="and"/>
+			<xs:enumeration value="or"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="min-max-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="min"/>
+			<xs:enumeration value="max"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="priority-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="by-time"/>
+			<xs:enumeration value="by-value"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="logical-operator-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="and"/>
+			<xs:enumeration value="or"/>
+			<xs:enumeration value="not"/>
+			<xs:enumeration value="k-from-n"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="statistical-operator-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="sum"/>
+			<xs:enumeration value="average"/>
+			<xs:enumeration value="count"/>
+			<xs:enumeration value="max"/>
+			<xs:enumeration value="min"/>
+			<xs:enumeration value="stdev"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="comparison-operator-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="bigger"/>
+			<xs:enumeration value="bigger-equal"/>
+			<xs:enumeration value="smaller"/>
+			<xs:enumeration value="smaller-equal"/>
+			<xs:enumeration value="equal"/>
+			<xs:enumeration value="not-equal"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="mathematical-operator-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="abs"/>
+			<xs:enumeration value="ceiling"/>
+			<xs:enumeration value="floor"/>
+			<xs:enumeration value="sqrt"/>
+			<xs:enumeration value="truncate"/>
+			<xs:enumeration value="log"/>
+			<xs:enumeration value="pow"/>
+			<xs:enumeration value="plus"/>
+			<xs:enumeration value="minus"/>
+			<xs:enumeration value="mult"/>
+			<xs:enumeration value="div"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="first-last-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="first"/>
+			<xs:enumeration value="last"/>
+			<xs:enumeration value="first-to-last"/>
+			<xs:enumeration value="by-granularity"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="ascending-descending-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="asc"/>
+			<xs:enumeration value="desc"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="persistence-behavior-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="pos-pos"/>
+			<xs:enumeration value="neg-neg"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="numeric-data-type-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="double"/>
+			<xs:enumeration value="concept-id-allowed-values"/>
+			<xs:enumeration value="mathematical-function"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="comparable-data-type-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="concept-id-allowed-values"/>
+			<xs:enumeration value="string"/>
+			<xs:enumeration value="double"/>
+			<xs:enumeration value="mathematical-function"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="logical-data-type-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="comparison-function"/>
+			<xs:enumeration value="logical-function"/>
+			<xs:enumeration value="concept-id-allowed-values"/>
+			<xs:enumeration value="time-comparison-function"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="gradient-trend-values-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="dec"/>
+			<xs:enumeration value="same"/>
+			<xs:enumeration value="inc"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="time-granularity-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="second"/>
+			<xs:enumeration value="minute"/>
+			<xs:enumeration value="hour"/>
+			<xs:enumeration value="day"/>
+			<xs:enumeration value="week"/>
+			<xs:enumeration value="month"/>
+			<xs:enumeration value="year"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="period-granularity-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="sec-of-min"/>
+			<xs:enumeration value="min-of-hour"/>
+			<xs:enumeration value="hour-of-day"/>
+			<xs:enumeration value="day-of-week"/>
+			<xs:enumeration value="day-of-month"/>
+			<xs:enumeration value="day-of-year"/>
+			<xs:enumeration value="month-of-year"/>
+			<xs:enumeration value="year-of-century"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="concept-type-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="gradient"/>
+			<xs:enumeration value="trend"/>
+			<xs:enumeration value="rate"/>
+			<xs:enumeration value="state"/>
+			<xs:enumeration value="pattern"/>
+			<xs:enumeration value="raw-ordinal"/>
+			<xs:enumeration value="raw-nominal"/>
+			<xs:enumeration value="raw-numeric"/>
+			<xs:enumeration value="raw-boolean"/>
+			<xs:enumeration value="raw-time"/>
+			<xs:enumeration value="event"/>
+			<xs:enumeration value="context"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="raw-type-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="ordinal"/>
+			<xs:enumeration value="nominal"/>
+			<xs:enumeration value="numeric"/>
+			<xs:enumeration value="boolean"/>
+			<xs:enumeration value="time"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="pattern-relation-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="all"/>
+			<xs:enumeration value="any"/>
+			<xs:enumeration value="k-of-n"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="context-flag-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="specific"/>
+			<xs:enumeration value="exactly"/>
+			<xs:enumeration value="general"/>
+			<xs:enumeration value="all"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="gradient-type-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="additive"/>
+			<xs:enumeration value="relative"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="boundary-point-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="start"/>
+			<xs:enumeration value="end"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="time-comparable-data-type-enum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="concept-id-allowed-values"/>
+			<xs:enumeration value="time-granularity-operand"/>
+			<xs:enumeration value="time-di-operand"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:element name="pattern-at-context" substitutionGroup="pattern"/>
+	<xs:element name="gradient">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="abstract-concept">
+					<xs:sequence>
+						<xs:element ref="gradient-trend-allowed-values"/>
+					</xs:sequence>
+					<xs:attribute name="significant-variation" type="xs:double" use="required"/>
+					<xs:attribute name="gradient-type" use="required">
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:enumeration value="additive"/>
+								<xs:enumeration value="relative"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:attribute>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="trend">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="abstract-concept">
+					<xs:sequence>
+						<xs:element ref="gradient-trend-allowed-values"/>
+						<xs:element name="time-steady" type="duration"/>
+					</xs:sequence>
+					<xs:attribute name="significant-variation" type="xs:double" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="logical-function">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="operands">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="operand" type="logical-operand" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="logical-operator" type="logical-operator-enum" use="required"/>
+			<xs:attribute name="logical-operators-arg" type="xs:int" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="comparison-function">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="left" type="comparison-operand-local"/>
+				<xs:element name="right" type="comparison-operand-local"/>
+			</xs:sequence>
+			<xs:attribute name="comparison-operator" type="comparison-operator-enum" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="comparison-operand-local">
+		<xs:choice>
+			<xs:element ref="concept-id-allowed-values"/>
+			<xs:element ref="mathematical-function"/>
+			<xs:element name="double"/>
+			<xs:element name="string"/>
+		</xs:choice>
+		<xs:attribute name="data-type" type="comparable-data-type-enum" use="required"/>
+	</xs:complexType>
+	<xs:complexType name="numeric-operand-local">
+		<xs:choice>
+			<xs:element ref="mathematical-function"/>
+			<xs:element name="double" type="xs:double"/>
+			<xs:element ref="concept-id-allowed-values"/>
+		</xs:choice>
+		<xs:attribute name="data-type" type="numeric-data-type-enum" use="required"/>
+	</xs:complexType>
+	<xs:element name="mathematical-function">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="left" type="numeric-operand-local"/>
+				<xs:element name="right" type="numeric-operand-local" minOccurs="0"/>
+			</xs:sequence>
+			<xs:attribute name="mathematical-operator" type="mathematical-operator-enum" use="required"/>
+			<xs:attribute name="missing-concept-def-value" type="xs:double" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="time-comparison-function">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="left" type="time-comparison-operand-local"/>
+				<xs:element name="right" type="time-comparison-operand-local"/>
+			</xs:sequence>
+			<xs:attribute name="time-comparison-operator" type="comparison-operator-enum" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="time-comparison-operand-local">
+		<xs:choice>
+			<xs:element ref="concept-id-allowed-values"/>
+			<xs:element ref="time-granularity-operand"/>
+			<xs:element ref="time-di-operand"/>
+		</xs:choice>
+		<xs:attribute name="data-type" type="time-comparable-data-type-enum" use="required"/>
+	</xs:complexType>
+	<xs:element name="time-granularity-operand">
+		<xs:complexType>
+			<xs:attribute name="time-granularity" type="time-granularity-enum" use="required"/>
+			<xs:attribute name="time" type="xs:string" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="time-di-operand">
+		<xs:complexType>
+			<xs:attribute name="concept-id" type="xs:int" use="required"/>
+			<xs:attribute name="time" type="boundary-point-enum" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="rate">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="abstract-concept">
+					<xs:sequence>
+						<xs:choice>
+							<xs:element ref="ordinal-allowed-values"/>
+							<xs:element ref="numeric-allowed-values"/>
+						</xs:choice>
+						<xs:element ref="symbolic-mapping" minOccurs="0"/>
+					</xs:sequence>
+					<xs:attribute name="time-granuality" type="time-granularity-enum" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<!-- start of pattern -->
+	<xs:complexType name="pattern-point-definition">
+		<xs:complexContent>
+			<xs:extension base="point-definition">
+				<xs:attribute name="component-id" type="xs:long" use="required"/>
+				<xs:attribute name="alias" type="xs:string" use="required"/>
+				<xs:attribute name="boundary-point" type="boundary-point-enum" use="required"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:element name="pattern">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="abstract-concept">
+					<xs:sequence>
+						<xs:choice>
+							<xs:element ref="ordinal-allowed-values"/>
+							<xs:element ref="numeric-allowed-values"/>
+							<xs:element ref="boolean-allowed-values"/>
+							<xs:element ref="nominal-allowed-values"/>
+							<xs:element ref="time-allowed-values"/>
+						</xs:choice>
+						<xs:element name="pattern-definition">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="components">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="component" maxOccurs="unbounded">
+													<xs:complexType>
+														<xs:sequence>
+															<xs:element name="at-context" type="at-context" minOccurs="0"/>
+															<xs:element name="local-constraints" minOccurs="0">
+																<xs:complexType>
+																	<xs:sequence>
+																		<xs:element name="value-constraints">
+																			<xs:complexType>
+																				<xs:sequence>
+																					<xs:element name="value-constraint" type="value-constraintType" minOccurs="0" maxOccurs="unbounded"/>
+																				</xs:sequence>
+																			</xs:complexType>
+																		</xs:element>
+																		<xs:element name="time-constraint" minOccurs="0">
+																			<xs:complexType>
+																				<xs:sequence>
+																					<xs:element name="start" type="point-definition"/>
+																					<xs:element name="end" type="point-definition"/>
+																				</xs:sequence>
+																			</xs:complexType>
+																		</xs:element>
+																		<xs:element name="duration-constraint" minOccurs="0">
+																			<xs:complexType>
+																				<xs:sequence>
+																					<xs:element name="min-duration" type="duration" minOccurs="0"/>
+																					<xs:element name="max-duration" type="duration" minOccurs="0"/>
+																				</xs:sequence>
+																			</xs:complexType>
+																		</xs:element>
+																	</xs:sequence>
+																	<xs:attribute name="save-bad-values" type="xs:boolean" use="optional" default="false"/>
+																</xs:complexType>
+															</xs:element>
+															<xs:element name="priorities">
+																<xs:complexType>
+																	<xs:sequence>
+																		<xs:element name="priority" minOccurs="0" maxOccurs="2">
+																			<xs:complexType>
+																				<xs:attribute name="priority-enum" type="priority-enum" use="required"/>
+																				<xs:attribute name="min-max-enum" type="min-max-enum" use="required"/>
+																			</xs:complexType>
+																		</xs:element>
+																	</xs:sequence>
+																</xs:complexType>
+															</xs:element>
+														</xs:sequence>
+														<xs:attribute name="id" type="xs:long" use="required"/>
+														<xs:attribute name="alias" type="xs:string" use="optional"/>
+														<xs:attribute name="context-flag" type="context-flag-enum" use="optional"/>
+													</xs:complexType>
+												</xs:element>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+									<xs:element name="pairwise-constraints">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="pairwise-constraints-list">
+													<xs:complexType>
+														<xs:sequence>
+															<xs:element name="pairwise-constraint" minOccurs="0" maxOccurs="unbounded">
+																<xs:complexType>
+																	<xs:sequence>
+																		<xs:element name="pairwise-constraint-component-i" type="pairwise-constraint-component"/>
+																		<xs:element name="pairwise-constraint-component-j" type="pairwise-constraint-component"/>
+																		<xs:element name="min-duration" type="duration" minOccurs="0"/>
+																		<xs:element name="max-duration" type="duration" minOccurs="0"/>
+																	</xs:sequence>
+																	<xs:attribute name="value-comparison-operator" type="comparison-operator-enum" use="optional"/>
+																	<xs:attribute name="time-comparison-operator" type="comparison-operator-enum" use="optional"/>
+																	<xs:attribute name="sac" type="xs:boolean" use="optional"/>
+																</xs:complexType>
+															</xs:element>
+														</xs:sequence>
+													</xs:complexType>
+												</xs:element>
+											</xs:sequence>
+											<xs:attribute name="logical-operator" type="and-or-enum" use="optional"/>
+										</xs:complexType>
+									</xs:element>
+									<xs:element name="periodic-constraints" minOccurs="0">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="temporal-periods" minOccurs="0">
+													<xs:complexType>
+														<xs:sequence>
+															<xs:element name="temporal-periods-list">
+																<xs:complexType>
+																	<xs:sequence>
+																		<xs:element name="temporal-period" maxOccurs="unbounded">
+																			<xs:complexType>
+																				<xs:attribute name="period-granularity" type="period-granularity-enum" use="required"/>
+																				<xs:attribute name="min" type="xs:int" use="optional" default="1"/>
+																				<xs:attribute name="max" type="xs:int" use="required"/>
+																			</xs:complexType>
+																		</xs:element>
+																	</xs:sequence>
+																	<xs:attribute name="logical-operator" type="and-or-enum" use="optional"/>
+																</xs:complexType>
+															</xs:element>
+														</xs:sequence>
+													</xs:complexType>
+												</xs:element>
+												<xs:element name="calendar-frequency" minOccurs="0">
+													<xs:complexType>
+														<xs:attribute name="frequency-granularity" type="time-granularity-enum" use="required"/>
+														<xs:attribute name="frequency-value" type="xs:int" use="required"/>
+														<xs:attribute name="last-complete" type="xs:boolean" use="optional" default="true"/>
+														<xs:attribute name="relative-component-id" type="xs:long" use="optional"/>
+													</xs:complexType>
+												</xs:element>
+												<xs:element name="min-gap-within" type="duration" minOccurs="0"/>
+												<xs:element name="max-gap-within" type="duration" minOccurs="0"/>
+												<xs:element name="min-gap-between" type="duration" minOccurs="0"/>
+												<xs:element name="max-gap-between" type="duration" minOccurs="0"/>
+											</xs:sequence>
+											<xs:attribute name="cardinality-min" type="xs:int" use="optional"/>
+											<xs:attribute name="cardinality-max" type="xs:int" use="optional"/>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+								<xs:attribute name="relation" type="pattern-relation-enum" use="optional" default="all"/>
+								<xs:attribute name="k-of-n-arg" type="xs:int" use="optional"/>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="pattern-output">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="value-local-pattern" minOccurs="0">
+										<xs:complexType>
+											<xs:choice>
+												<xs:element ref="logical-function"/>
+												<xs:element ref="comparison-function"/>
+												<xs:element ref="mathematical-function"/>
+												<xs:element ref="mapping-function"/>
+												<xs:element ref="union-function"/>
+											</xs:choice>
+										</xs:complexType>
+									</xs:element>
+									<xs:element name="start-local-pattern" type="pattern-point-definition" minOccurs="0"/>
+									<xs:element name="end-local-pattern" type="pattern-point-definition" minOccurs="0"/>
+									<xs:element name="value-group-blobs" minOccurs="0">
+										<xs:complexType>
+											<xs:complexContent>
+												<xs:extension base="global-function">
+													<xs:choice>
+														<xs:element ref="statistical-function"/>
+														<xs:element ref="count-function"/>
+														<xs:element ref="get-kth-function"/>
+														<xs:element ref="compliance-function"/>
+													</xs:choice>
+												</xs:extension>
+											</xs:complexContent>
+										</xs:complexType>
+									</xs:element>
+									<xs:element name="value-global-pattern" minOccurs="0">
+										<xs:complexType>
+											<xs:complexContent>
+												<xs:extension base="global-function">
+													<xs:choice>
+														<xs:element ref="statistical-function"/>
+														<xs:element ref="count-function"/>
+														<xs:element ref="get-kth-function"/>
+													</xs:choice>
+												</xs:extension>
+											</xs:complexContent>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+								<xs:attribute name="start-end-group-blobs" type="first-last-enum" use="optional"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<!-- end of pattern  -->
+	<xs:complexType name="pairwise-constraint-component">
+		<xs:attribute name="alias" type="xs:string" use="required"/>
+		<xs:attribute name="boundary" type="boundary-point-enum" use="optional"/>
+	</xs:complexType>
+	<xs:element name="trend-at-context" abstract="false" substitutionGroup="trend" nillable="false"/>
+	<!-- TODO: define complexType pattern-at-context -->
+	<xs:complexType name="pattern-at-context">
+		<xs:complexContent>
+			<xs:extension base="concept">
+				<xs:sequence>
+					<xs:element name="allowed-values"/>
+					<xs:element name="derived-from">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element name="derived-from-id" type="xs:long" maxOccurs="unbounded"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+				<xs:attribute name="significant-variation" type="xs:double" use="required"/>
+				<xs:attribute name="gradient-type" use="required">
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:enumeration value="additive"/>
+							<xs:enumeration value="relative"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:attribute>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<!-- end of complexType pattern-at-context -->
+	<xs:complexType name="state-at-context">
+		<xs:complexContent>
+			<xs:extension base="concept">
+				<xs:sequence>
+					<xs:element name="derived-from">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element name="derived-from-id" type="xs:long" maxOccurs="unbounded"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element name="local-function">
+						<xs:complexType>
+							<xs:choice>
+								<xs:element ref="logical-function"/>
+								<xs:element ref="mapping-function"/>
+								<xs:element ref="comparison-function"/>
+								<xs:element ref="mathematical-function"/>
+							</xs:choice>
+						</xs:complexType>
+					</xs:element>
+					<xs:choice>
+						<xs:element name="ordinal-allowed-values">
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="allowed-values">
+										<xs:sequence>
+											<xs:element name="values" minOccurs="0">
+												<xs:complexType>
+													<xs:sequence>
+														<xs:element ref="ordinal-allowed-value" minOccurs="0" maxOccurs="unbounded"/>
+													</xs:sequence>
+												</xs:complexType>
+											</xs:element>
+										</xs:sequence>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="numeric-allowed-values">
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="allowed-values">
+										<xs:attribute name="min-value" type="xs:double" use="required"/>
+										<xs:attribute name="max-value" type="xs:double" use="required"/>
+										<xs:attribute name="unit" type="xs:string" use="required"/>
+										<xs:attribute name="scale" use="required" default="ratio">
+											<xs:simpleType>
+												<xs:restriction base="xs:string">
+													<xs:enumeration value="ratio"/>
+													<xs:enumeration value="interval"/>
+												</xs:restriction>
+											</xs:simpleType>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="boolean-allowed-values">
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="allowed-values">
+										<xs:sequence>
+											<xs:element name="values" minOccurs="0">
+												<xs:complexType>
+													<xs:sequence>
+														<xs:element ref="boolean-allowed-value" minOccurs="0" maxOccurs="unbounded"/>
+													</xs:sequence>
+												</xs:complexType>
+											</xs:element>
+										</xs:sequence>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="nominal-allowed-values">
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="allowed-values">
+										<xs:sequence>
+											<xs:element name="values">
+												<xs:complexType>
+													<xs:sequence>
+														<xs:element ref="nominal-allowed-value" maxOccurs="unbounded"/>
+													</xs:sequence>
+												</xs:complexType>
+											</xs:element>
+										</xs:sequence>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="time-allowed-values">
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="allowed-values">
+										<xs:attribute name="eariest-time" type="xs:string" use="required" default="01/01/1990"/>
+										<xs:attribute name="latest-time" type="xs:string" use="required" default="01/01/2100"/>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="point-definition">
+		<xs:sequence>
+			<xs:element name="time-shift" type="duration"/>
+		</xs:sequence>
+		<xs:attribute name="reference-point" type="xs:dateTime" use="optional"/>
+	</xs:complexType>
+	<xs:complexType name="global-function"/>
+	<xs:complexType name="value-constraintType">
+		<xs:complexContent>
+			<xs:extension base="value-constraint"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="ordinal-allowed-valueType">
+		<xs:sequence>
+			<xs:element ref="persistence" minOccurs="0"/>
+		</xs:sequence>
+		<xs:attribute name="order" type="xs:int" use="required"/>
+		<xs:attribute name="value" type="xs:string" use="required"/>
+	</xs:complexType>
+	<xs:element name="gradient-trend-allowed-values">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="allowed-values">
+					<xs:sequence>
+						<xs:element name="values">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element ref="ordinal-allowed-value" minOccurs="0" maxOccurs="3"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="boundary-shift">
+		<xs:sequence>
+			<xs:element name="time-gap" type="duration"/>
+		</xs:sequence>
+		<xs:attribute name="boundary-point" type="boundary-point-enum" use="required"/>
+	</xs:complexType>
+	<xs:complexType name="stateType">
+		<xs:complexContent>
+			<xs:extension base="abstract-concept">
+				<xs:sequence>
+					<xs:choice>
+						<xs:element ref="mapping-function"/>
+						<xs:element ref="logical-function"/>
+						<xs:element ref="comparison-function"/>
+						<xs:element ref="mathematical-function"/>
+						<xs:element ref="union-function"/>
+					</xs:choice>
+					<xs:choice>
+						<xs:element ref="ordinal-allowed-values"/>
+						<xs:element ref="numeric-allowed-values"/>
+						<xs:element ref="boolean-allowed-values"/>
+						<xs:element ref="nominal-allowed-values"/>
+						<xs:element ref="time-allowed-values"/>
+					</xs:choice>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:element name="gradient-at-context" substitutionGroup="gradient"/>
+	<xs:element name="state-at-context" substitutionGroup="state"/>
+	<xs:element name="rate-at-context" substitutionGroup="rate"/>
+	<xs:element name="ordinal-allowed-values">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="allowed-values">
+					<xs:sequence>
+						<xs:element name="values">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element ref="ordinal-allowed-value" minOccurs="0" maxOccurs="unbounded"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="numeric-allowed-values">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="allowed-values">
+					<xs:attribute name="min-value" type="xs:double" use="required"/>
+					<xs:attribute name="max-value" type="xs:double" use="required"/>
+					<xs:attribute name="units" type="xs:string" use="required"/>
+					<xs:attribute name="scale" use="required" default="ratio">
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:enumeration value="ratio"/>
+								<xs:enumeration value="interval"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:attribute>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="boolean-allowed-values">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="allowed-values">
+					<xs:sequence>
+						<xs:element name="values">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element ref="boolean-allowed-value" minOccurs="2" maxOccurs="2"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="nominal-allowed-values">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="allowed-values">
+					<xs:sequence>
+						<xs:element name="values">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element ref="nominal-allowed-value" minOccurs="0" maxOccurs="unbounded"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="time-allowed-values">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="allowed-values">
+					<xs:attribute name="eariest-time" type="xs:string" use="required" default="01/01/1990"/>
+					<xs:attribute name="latest-time" type="xs:string" use="required" default="01/01/2100"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="concept-id-allowed-values">
+		<xs:complexType>
+			<xs:attribute name="id" type="xs:long" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="symbolic-mapping">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="values">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="symbolic-mapping-value" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="numeric-range">
+											<xs:complexType>
+												<xs:attribute name="number1" type="xs:double" use="required"/>
+												<xs:attribute name="number2" type="xs:double" use="optional"/>
+												<xs:attribute name="comparison-operator1" type="comparison-operator-enum" use="required"/>
+												<xs:attribute name="comparison-operator2" type="comparison-operator-enum" use="optional"/>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+									<xs:attribute name="value" type="xs:string"/>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="statistical-function">
+		<xs:complexType>
+			<xs:attribute name="statistical-operator" type="statistical-operator-enum" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="count-function"/>
+	<xs:element name="get-kth-function">
+		<xs:complexType>
+			<xs:attribute name="first-last-granulrity" type="first-last-enum" use="required"/>
+			<xs:attribute name="kth-arg" type="xs:int" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="compliance-function">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="period-compliance" minOccurs="0">
+					<xs:complexType>
+						<xs:attribute name="trapezeA" type="xs:double" use="required"/>
+						<xs:attribute name="trapezeB" type="xs:double" use="required"/>
+						<xs:attribute name="trapezeC" type="xs:double" use="required"/>
+						<xs:attribute name="trapezeD" type="xs:double" use="required"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="time-constraint-compliance" minOccurs="0">
+					<xs:complexType>
+						<xs:attribute name="trapezeA" type="xs:double" use="required"/>
+						<xs:attribute name="trapezeB" type="xs:double" use="required"/>
+						<xs:attribute name="trapezeC" type="xs:double" use="required"/>
+						<xs:attribute name="trapezeD" type="xs:double" use="required"/>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="fuzzy-function">
+		<xs:complexType>
+			<xs:attribute name="trapeze-A" type="xs:int" use="required"/>
+			<xs:attribute name="trapeze-B" type="xs:int" use="required"/>
+			<xs:attribute name="trapeze-C" type="xs:int" use="required"/>
+			<xs:attribute name="trapeze-D" type="xs:int" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="unifiable-operand-local">
+		<xs:sequence>
+			<xs:element ref="concept-id-allowed-values"/>
+		</xs:sequence>
+		<xs:attribute name="data-type" type="xs:string" use="required"/>
+		<xs:attribute name="priority" type="xs:int" use="required"/>
+	</xs:complexType>
+	<xs:element name="union-function">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="left" type="unifiable-operand-local"/>
+				<xs:element name="right" type="unifiable-operand-local"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
