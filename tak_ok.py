@@ -1,7 +1,9 @@
+import os
 import json
 from lxml import etree
 from typing import Tuple, List
 import pandas as pd
+import re
 
 # Local Code
 from Config.validator_config import ValidatorConfig
@@ -146,7 +148,12 @@ class TAKok:
                     tg = clipper.find(".//time-gap")
                     if not tg.get("value") or not tg.get("granularity"):
                         issues.append(f"Clipper {clipper.get('id')} has invalid <time-gap> settings.")
-
+        
+        concept_type = row.get("TYPE", "").lower() if sheet == "raw_concepts" else root_tag
+        template_str = self._get_template(concept_type)
+        if template_str:
+            issues += self._validate_against_businesslogic_values(doc, row, template_str)
+        
         if issues:
             return False, "Business logic issues: " + "; ".join(issues)
 
@@ -174,134 +181,23 @@ class TAKok:
         }
         return tag_to_sheet.get(tag)
     
-    # def _validate_state_range_coverage(self, doc: etree._Element) -> List[str]:
-    #     """
-    #     Validates bin coverage in a <state> TAK's <mapping-function>. Ensures:
-    #     - Each bin has a valid comparison or logical structure.
-    #     - Bin descriptions are printed clearly (e.g., "x < 54", "70 <= x < 140").
-    #     - The full numeric range is covered without overlaps or gaps.
+    def _get_template(self, concept_type: str) -> str:
+        """
+        Loads the appropriate XML template from the `tak_templates` directory.
 
-    #     Returns:
-    #         List[str]: List of issues found, including faulty bins and problematic transitions.
-    #     """
-    #     def op_symbol(op: str) -> str:
-    #         return {
-    #             "smaller": "<",
-    #             "smaller-equal": "<=",
-    #             "bigger": ">",
-    #             "bigger-equal": ">=",
-    #             "equal": "==",
-    #             "not-equal": "!="
-    #         }.get(op, op)
+        Args:
+            concept_type (str): TAK type (e.g., 'nominal-raw-concept')
 
-    #     def is_overlap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
-    #         if not upper or not lower:
-    #             return False
-    #         val_u, op_u = upper
-    #         val_l, op_l = lower
-
-    #         if val_u > val_l:
-    #             return True
-    #         if val_u < val_l:
-    #             return False
-
-    #         # Same value — check if both allow equality
-    #         return op_u in ("smaller-equal", "==") and op_l in ("bigger-equal", "==")
-
-    #     def is_gap(upper: Tuple[float, str], lower: Tuple[float, str]) -> bool:
-    #         if not upper or not lower:
-    #             return False
-    #         val_u, op_u = upper
-    #         val_l, op_l = lower
-
-    #         if val_u < val_l:
-    #             # Check if there's a gap between the ranges
-    #             return not (op_u in ("smaller-equal", "==") or op_l in ("bigger-equal", "=="))
-    #         return False  # val_u >= val_l → no gap
-
-    #     issues = []
-    #     bins = doc.findall(".//mapping-function-2-value")
-    #     ranges = []
-
-    #     if not bins:
-    #         return ["Missing <mapping-function-2-value> bins."]
-
-    #     for idx, bin_elem in enumerate(bins):
-    #         label = bin_elem.get("value", f"Bin {idx}")
-    #         eval_tree = bin_elem.find(".//evaluation-tree")
-    #         if eval_tree is None:
-    #             issues.append(f"Bin {idx} ('{label}'): Missing <evaluation-tree>.")
-    #             continue
-
-    #         logic = eval_tree.find(".//logical-function")
-    #         comp = eval_tree.find(".//comparison-function")
-    #         lower = upper = None
-    #         desc = ""
-
-    #         if logic is not None:
-    #             ops = logic.findall(".//comparison-function")
-    #             for op in ops:
-    #                 operator = op.get("comparison-operator")
-    #                 val = float(op.findtext(".//double"))
-    #                 if operator.startswith("bigger"):
-    #                     lower = (val, operator)
-    #                 elif operator.startswith("smaller"):
-    #                     upper = (val, operator)
-    #             if lower and upper:
-    #                 desc = f"x {op_symbol(lower[1])} {lower[0]} AND x {op_symbol(upper[1])} {upper[0]}"
-    #             else:
-    #                 desc = "Invalid logical-function"
-    #         elif comp is not None:
-    #             operator = comp.get("comparison-operator")
-    #             val = float(comp.findtext(".//double"))
-    #             if operator.startswith("bigger"):
-    #                 lower = (val, operator)
-    #             elif operator.startswith("smaller"):
-    #                 upper = (val, operator)
-    #             desc = f"x {op_symbol(operator)} {val}"
-    #         else:
-    #             issues.append(f"Bin {idx} ('{label}'): No valid comparison or logic.")
-    #             continue
-
-    #         ranges.append({
-    #             "idx": idx,
-    #             "label": label,
-    #             "lower": lower,
-    #             "upper": upper,
-    #             "description": desc
-    #         })
-
-    #     # Describe all ranges
-    #     for r in ranges:
-    #         issues.append(f"Bin {r['idx']} ('{r['label']}'): {r['description']}")
-
-    #     # Sort by lower bound value
-    #     sorted_ranges = sorted(ranges, key=lambda r: r['lower'][0] if r['lower'] else float('-inf'))
-
-    #     # Check gaps and overlaps between adjacent bins
-    #     for i in range(len(sorted_ranges) - 1):
-    #         r1 = sorted_ranges[i]
-    #         r2 = sorted_ranges[i + 1]
-    #         upper1 = r1["upper"]
-    #         lower2 = r2["lower"]
-
-    #         if upper1 and lower2:
-    #             print(f"🧪 Checking gap/overlap between Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}')")
-    #             print(f"    Upper: {upper1}, Lower: {lower2}")
-
-    #             if is_overlap(upper1, lower2):
-    #                 issues.append(
-    #                     f"Range overlap: Bin {r1['idx']} ('{r1['label']}') and Bin {r2['idx']} ('{r2['label']}') "
-    #                     f"overlap between {lower2[0]} and {upper1[0]}."
-    #                 )
-    #             elif is_gap(upper1, lower2):
-    #                 issues.append(
-    #                     f"Range gap: Bin {r1['idx']} ('{r1['label']}') ends at {upper1[0]}, "
-    #                     f"but Bin {r2['idx']} ('{r2['label']}') starts at {lower2[0]}."
-    #                 )
-
-    #     return issues
-
+        Returns:
+            str: Contents of the XML template with placeholders
+        """
+        concept_type = concept_type if 'raw' in concept_type else f'{concept_type}s'
+        template_path = os.path.join("tak_templates", f"{concept_type}.xml")
+        if os.path.exists(template_path):
+            with open(template_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        print(f"[WARNING]: No template available for {concept_type}")
+        return f"<!-- No template available for {concept_type} -->"
 
     def _validate_state_range_coverage(self, doc: etree._Element, excel_bins: List[Tuple[float, float]]) -> List[str]:
         """
@@ -432,6 +328,83 @@ class TAKok:
             bin_descriptions = [f"Bin {b['idx']} ('{b['label']}') range: {b['desc']}" for b in sorted_bins]
             return bin_descriptions + actual_issues
         return []
+    
+    def _validate_against_businesslogic_values(self, doc: etree._Element, row: pd.Series, template_str: str) -> List[str]:
+        """
+        Dynamically compare all placeholders from the XML template against actual Excel values.
+
+        Args:
+            doc: The parsed XML element.
+            row: The corresponding Excel row.
+            template_str: A TAK-type-specific template (e.g., for state, context).
+
+        Returns:
+            List of mismatch descriptions.
+        """
+
+        def extract_placeholders(template: str) -> List[str]:
+            return sorted(set(re.findall(r"\{([^{}]+)\}", template)))
+
+        def find_xpath_of_field(field: str) -> str:
+            """
+            Try to locate the path where a placeholder appears in the template.
+            Assumes format: <tag ... attr="{FIELD}"> or <tag>{FIELD}</tag>
+            """
+            matches = re.findall(
+                    rf"""<(?P<tag1>[a-zA-Z0-9_-]+)[^>]*?\{{{field}}}|  # match attributes
+                        <(?P<tag2>[a-zA-Z0-9_-]+)>\s*\{{{field}}}\s*</[^>]+>  # match inner text
+                    """, template_str, re.VERBOSE)
+            if not matches:
+                return None
+            # Try to reconstruct a usable path (best effort)
+            # E.g., match for 'good-after granularity="{LOCAL_PERSISTENCE_GOOD_AFTER_GRANULARITY}"'
+            tag_match = matches[0]
+            tag_name = tag_match[0] or tag_match[1]
+            return f".//{tag_name}"
+
+        def get_xml_value_dynamic(field: str) -> str:
+            # First try known patterns
+            if field == "ID":
+                return doc.get("id", "").strip()
+            elif field == "TAK_NAME":
+                return doc.get("name", "").strip()
+
+            # Fallback: infer tag from template
+            path = find_xpath_of_field(field)
+            if not path:
+                return ""
+
+            elements = doc.findall(path)
+            for el in elements:
+                # First check attributes
+                for attr_key, attr_val in el.attrib.items():
+                    if attr_key.lower().endswith(field.lower().split("_")[-1]):
+                        # Compare normalized values
+                        expected = str(row.get(field, "")).strip().lower()
+                        actual = attr_val.strip().lower()
+                        if expected == actual:
+                            return attr_val.strip()
+
+                # Then check text
+                if el.text and el.text.strip().lower() == str(row.get(field, "")).strip().lower():
+                    return el.text.strip()
+
+            return ""
+
+        issues = []
+        placeholders = extract_placeholders(template_str)
+
+        for field in placeholders:
+            if field not in row:
+                continue
+
+            expected = str(row.get(field, "")).strip()
+            actual = get_xml_value_dynamic(field)
+
+            if expected != actual:
+                issues.append(f"{field} mismatch: XML shows='{actual}' | Excel says it should be='{expected}'")
+
+        return issues
 
 
 if __name__ == "__main__":
