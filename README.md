@@ -1,16 +1,16 @@
 # TAKAutomator
 
-A smart pipeline that leverages GPT to generate and validate Temporal Abstraction Knowledge (TAK) XML files based on structured business logic and schema constraints. TAKAutomator simplifies and automates the process of authoring complex TAK files for knowledge-driven systems, ensuring schema compliance and organizational business rules.
+A smart pipeline that leverages `gpt-instruct` models to generate and validate Temporal Abstraction Knowledge (TAK) XML files based on structured business logic and schema constraints. TAKAutomator simplifies and automates the process of authoring complex TAK files for knowledge-driven systems, ensuring schema compliance and organizational business rules.
 
 ---
 
 ## 🧠 What It Does
 
 TAKAutomator:
-- 🧾 Reads structured definitions from an Excel file (e.g., TAK ID, concept type, persistence, etc.).
-- 🔍 Extracts schema rules and templates to guide TAK XML structure.
+- 🧾 Reads structured definitions from an Excel file (e.g., TAK ID, concept type, persistence, etc.) - The business logic.
+- 🔍 Extracts schema rules and templates using RAG to guide TAK XML structure.
 - 🧠 Uses a local LLM agent (e.g., OpenAI GPT) to generate XML output that matches schema and business logic.
-- ✅ Validates output against schema and Excel-based constraints using dual validation (`TAKok`, `Excelok`).
+- ✅ Validates output against schema and the business logic constraints using dual validation (`TAKok`, `Excelok`).
 - 🔄 Iteratively corrects and retries generation based on feedback.
 - 📁 Saves valid TAKs to organized folders and tracks progress in a registry file (`tak_registry.json`), and compress them as zip for deployment upon request (`main.py`).
 
@@ -37,7 +37,7 @@ TAKAutomator/
 ### Prerequisites
 
 - Python 3.7 or higher
-- Access to OpenAI API (a `secret_keys.py` file)
+- Access to OpenAI API (a `secret_keys.py` file) - Note it's structure based on the Client call in `llm_agent.py`
 - A valid schema .xsd file
 - A well-structured `taks.xlsx` file with proper TAK definitions
 
@@ -68,16 +68,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Comfigure validator and agent in `Config.agent_config.py` and `Config.validator_config.py`
+4. Configure validator and agent in `Config.agent_config.py` and `Config.validator_config.py` based on your need.
 
 
 ## Usage
 
 - The tool will validate the Excel file.
-- Iterate through required sheets (raw_concepts, states, events).
+- Iterate through required sheets (`ValidatorConfig.REQUIRED_SHEETS`).
 - Generate TAK XMLs one by one using GPT, validating each.
 - Valid TAKs are saved in TAKs/<sheet_name>/ folders.
-- Invalid TAKs are also saved with _INVALID_ suffix for manual review.
+- Invalid TAKs are also saved with _INVALID_ substring for manual review. Rejects will be printed in terminal.
 
 To test with a single TAK and avoid burning LLM quota, run in test mode:
 
@@ -92,7 +92,7 @@ automator.run(test_mode=True)
 - Retry mechanism with feedback on failed generation
 - Persistent tracking via JSON registry
 - Template-driven prompting (improves LLM accuracy)
-- Modular: easy to extend with new concept types or logic rules
+- Modular: easy to extend with new concept types or logic rules - just add relevant functions and templates, and extend the Excel
 
 ## TO-DOs and Improvements
 
@@ -105,8 +105,8 @@ automator.run(test_mode=True)
 3. Validation problem in TAKok for raw_concepts, as it will somtime fail to find the actual value in the XML to compare against the Excel, which will result in a warning that is not true. Mostly annoying but harmless.
 
 ## Notes
-- Templates are stored under tak_templates/ and must match Excel concept types.
-- The generated XMLs are validated using the schema provided in ValidatorConfig.SCHEMA_PATH.
+- Templates are stored under `tak_templates/` and must match Excel concept types
+- The generated XMLs are validated using the schema provided in ValidatorConfig.SCHEMA_PATH
 
 ## GIT Commit Tips
 Once you've made changes, commit and push as usual:
