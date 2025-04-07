@@ -93,22 +93,31 @@ class TAKAutomator:
                     tak_text = self.llm.generate_response(prompt)
                     prev_outputs.append(tak_text)
 
-                    valid, message = self.tak_validator.validate(tak_text, tak_id)
-                    print(f"[GENERATED TAK VALIDATION MESSAGE]: {message}")
+                    valid, ind, messages = self.tak_validator.validate(tak_text, tak_id)
+                    messages_str = ind + '; '.join(messages)
+                    print(f"[GENERATED TAK VALIDATION MESSAGE]: {messages_str}")
                     if valid:
                         filename = f"{sheet.upper()}_{tak_name}.xml"
                         self._write_file(sheet_folder, filename, tak_text)
                         self.registry[tak_id] = filename
                         self._save_registry()
+                        print(f"[INFO]: Saved TAK ID={tak_id}, NAME={tak_name}")
                         break
+                    elif tak_text in prev_outputs[:-1] and all(['Note: This validation might not be accurate' in m for m in messages]):
+                        filename = f"{sheet.upper()}_{tak_name}.xml"
+                        self._write_file(sheet_folder, filename, tak_text)
+                        self.registry[tak_id] = filename
+                        self._save_registry()
+                        print(f"[WARNING]: Saved TAK ID={tak_id}, NAME={tak_name}. TAKok was unable to validate it's attr values so you might want to manually examine the output file: {filename}.")
+
                     elif i == self.max_iters - 1 or tak_text in prev_outputs[:-1]:
                         filename = f"{sheet.upper()}_INVALID_{tak_name}.xml"
                         self._write_file(sheet_folder, filename, tak_text)
                         self.registry[tak_id] = filename
                         self._save_registry()
-                        print(f"[WARNING]: Saved invalid TAK for manual check: {filename}. Errors: {message}")
+                        print(f"[WARNING]: Saved invalid TAK for manual check: {filename}. Errors: {messages_str}")
                     else:
-                        feedback = message
+                        feedback = messages_str
                     
                 if test_mode:
                     print("[TEST MODE]: Exiting after first TAK. Bye.")

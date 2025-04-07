@@ -45,7 +45,7 @@ class TAKok:
         except Exception as e:
             raise RuntimeError(f"Failed to load Excel from {excel_path}: {e}")
 
-    def validate(self, tak_text: str, tak_id: str = None) -> Tuple[bool, str]:
+    def validate(self, tak_text: str, tak_id: str = None) -> Tuple[bool, str, List[str]]:
         """
         Validate a TAK XML string against both the schema and business rules.
 
@@ -54,21 +54,21 @@ class TAKok:
             tak_id (str, optional): TAK identifier. If None, will extract from XML.
 
         Returns:
-            Tuple[bool, str]: 
-                - (True, "Valid") if valid
-                - (False, "Critical error: ...") for structural issues that should break the loop
-                - (False, "Business issues: ...") for fixable problems LLM can iterate on
+            Tuple[bool, str, List[str]]: 
+                - (True, 'OK: ', ["Valid"]) if valid
+                - (False, 'Critical error: ', ["issue1, issue2..."]) for structural issues that should break the loop and LLM should fix.
+                - (False, 'Business logic issues: ', ["issue1, issue2..."]) for fixable problems LLM can iterate on
         """
         # === CRITICAL: Invalid XML ===
         try:
             doc = etree.fromstring(tak_text.encode('utf-8'))
         except etree.XMLSyntaxError as e:
-            return False, f"Critical error: XML syntax error: {e}"
+            return False, 'Critical error: ', [f"XML syntax error: {e}"]
 
         # === CRITICAL: Schema invalid ===
         if not self.schema.validate(doc):
             errors = [str(error) for error in self.schema.error_log]
-            return False, "Critical error: Schema validation errors: " + "; ".join(errors)
+            return False, 'Critical schema validation errors: ', errors
 
         # === CRITICAL: Type or ID mismatch ===
         root_tag = doc.tag
@@ -76,16 +76,16 @@ class TAKok:
         tak_id = tak_id or tak_id_from_xml
 
         if tak_id != tak_id_from_xml:
-            return False, f"Critical error: TAK ID mismatch. Expected={tak_id}, but got={tak_id_from_xml} in XML."
+            return False, 'Critical error: ', [f"TAK ID mismatch. Expected={tak_id}, but got={tak_id_from_xml} in XML."]
 
         sheet = self._get_sheet_for_tag(root_tag)
         if sheet is None:
-            return False, f"Critical error: Unrecognized TAK type with root tag <{root_tag}>."
+            return False, 'Critical error: ', [f"Unrecognized TAK type with root tag <{root_tag}>."]
 
         df = self.excel[sheet]
         row = df[df['ID'] == tak_id]
         if row.empty:
-            return False, f"Critical error: No matching ID '{tak_id}' found in sheet '{sheet}'."
+            return False, 'Critical error: ', f"No matching ID '{tak_id}' found in sheet '{sheet}'."
 
         # === BUSINESS LOGIC VALIDATION ===
         row = row.iloc[0]
@@ -156,9 +156,9 @@ class TAKok:
         if sheet in ["raw_concepts", "states"]:
             issues += self._validate_allowed_values_against_excel(doc, row) 
         if issues:
-            return False, "Business logic issues: " + "; ".join(issues)
+            return False, "Business logic issues: ", issues
 
-        return True, "Valid"
+        return True, 'OK: ', ["TAK is Valid"]
 
     def _get_sheet_for_tag(self, tag: str) -> str:
         """
@@ -399,11 +399,9 @@ class TAKok:
             actual = get_xml_value_dynamic(field)
 
             if expected != actual:
-                issues.append(f"{field} mismatch: XML shows='{actual}' | Excel says it should be='{expected}'")
+                # Add issue + disclaimer due to code issue
+                issues.append(f"{field} mismatch: XML shows='{actual}' | Excel says it should be='{expected}'. Note: This validation might not ba accurate due to code issue. If the validation says current value is an empty str and Excel value match the XML value - Carry on")
 
-        # Add disclaimer due to code issue
-        if issues:
-            issues.append("Note: This validation might not ba accurate due to code issue. If the validation says current value is an empty str and Excel value match the XML value - Carry on")
         return issues
     
     def _validate_allowed_values_against_excel(self, doc: etree._Element, row: pd.Series) -> list[str]:
@@ -464,8 +462,8 @@ if __name__ == "__main__":
     except RuntimeError as e:
         sys.exit(f"Initialization error: {e}")
 
-    valid, message = validator.validate(sample_tak)
+    valid, ind, messages = validator.validate(sample_tak)
     if valid:
         print("TAK file is valid!")
     else:
-        print("TAK file is invalid:", message)
+        print("TAK file is invalid:", ind + '; '.join(messages))
