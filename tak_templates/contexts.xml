@@ -14,12 +14,12 @@
         <value-constraint value="{INDUCER_VALUE}" operator="{INDUCER_OPERATOR}"/>
       </value-constraints>
 
-      <!-- Optional: include only if FROM_BOUND is present -->
+      <!-- Optional: include only if FROM_BOUND is present in excel -->
       <from boundary-point="{FROM_BOUND}">
         <time-gap value="{FROM_SHIFT}" granularity="{FROM_GRANULARITY}"/>
       </from>
 
-      <!-- Optional: include only if UNTIL_BOUND is present -->
+      <!-- Optional: include only if UNTIL_BOUND is present in excel -->
       <until boundary-point="{UNTIL_BOUND}">
         <time-gap value="{UNTIL_SHIFT}" granularity="{UNTIL_GRANULARITY}"/>
       </until>
