@@ -74,9 +74,9 @@ class LLMAgent:
         response = client.chat.completions.create(**api_params)
         raw_response = response.choices[0].message.content
         
-        # Count output tokens
-        output_token_count = self.count_tokens(raw_response)
-        print(f"[Info]: LLM call complete. Input tokens: {input_token_count}, Output tokens: {output_token_count}")
+        # # Count output tokens
+        # output_token_count = self.count_tokens(raw_response)
+        # print(f"[Info]: LLM call complete. Input tokens: {input_token_count}, Output tokens: {output_token_count}")
         
         # Return raw text for non-JSON responses
         return raw_response

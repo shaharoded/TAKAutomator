@@ -42,6 +42,7 @@ class TAKok:
 
         try:
             self.excel = pd.read_excel(excel_path, sheet_name=None, dtype=str)
+            self.excel = {sheet: df.fillna('') for sheet, df in self.excel.items()}
         except Exception as e:
             raise RuntimeError(f"Failed to load Excel from {excel_path}: {e}")
 
@@ -400,7 +401,7 @@ class TAKok:
 
             if expected != actual:
                 # Add issue + disclaimer due to code issue
-                issues.append(f"{field} mismatch: XML shows='{actual}' | Excel says it should be='{expected}'. Note: This validation might not ba accurate due to code issue. If the validation says current value is an empty str and Excel value match the XML value - Carry on")
+                issues.append(f"{field} mismatch: XML shows='{actual}' | Excel says it should be='{expected}'. Note: This validation might not be accurate due to code issue. If the validation says current value is an empty str and Excel value match the XML value - Carry on")
 
         return issues
     

@@ -1,8 +1,7 @@
 import os
-from lxml import etree
 import pandas as pd
 import json
-from typing import List
+from datetime import datetime
 
 # Local Code
 from Config.validator_config import ValidatorConfig
@@ -26,6 +25,8 @@ class TAKAutomator:
         """
         self.schema_path = ValidatorConfig.SCHEMA_PATH
         self.excel_path = ValidatorConfig.EXCEL_PATH
+        self.excel = pd.read_excel(ValidatorConfig.EXCEL_PATH, sheet_name=None, dtype=str)
+        self.excel = {sheet: df.fillna('') for sheet, df in self.excel.items()}
         self.required_sheets = ValidatorConfig.REQUIRED_SHEETS
         self.max_iters = AgentConfig.MAX_ITERS
         self.excel_validator = Excelok(self.excel_path)
@@ -33,6 +34,10 @@ class TAKAutomator:
         self.llm = LLMAgent()
         self.registry_path = "tak_registry.json"
         self.registry = self._load_registry()
+        self.log_path = "log_sheet.txt"
+        with open(self.log_path, 'w') as f:
+            f.write(f"TAKAutomator Log - {datetime.now()}\n")
+            f.write("=" * 50 + "\n")
     
     def _load_registry(self):
         """
@@ -49,6 +54,19 @@ class TAKAutomator:
         """
         with open(self.registry_path, 'w', encoding='utf-8') as f:
             json.dump(self.registry, f, indent=2)
+    
+    def _log(self, message: str, to_terminal: bool = False):
+        """
+        Log messages file, with an oprion to print to terminal.
+        Args:
+            message (str): The message to log.
+            to_terminal (bool): Whether to also print to terminal.
+        """        
+        with open(self.log_path, 'a') as f:
+            f.write(message + "\n")
+        
+        if to_terminal:
+            print(message)
 
     def run(self, test_mode=False):
         """
@@ -62,18 +80,17 @@ class TAKAutomator:
             print(f"[ERROR]: Excel validation failed: {msg}")
             return
 
-        excel = pd.read_excel(self.excel_path, sheet_name=None, dtype=str)
         os.makedirs("TAKs", exist_ok=True)
 
         for sheet in self.required_sheets:
-            if sheet not in excel:
+            if sheet not in self.excel:
                 continue
 
-            df = excel[sheet].dropna(how='all')
+            df = self.excel[sheet].dropna(how='all')
             if df.empty:
-                print(f"[INFO]: Skipping sheet: {sheet} ({df.shape[0]} rows)")
+                self._log(f"[INFO]: Skipping sheet: {sheet} ({df.shape[0]} rows)", to_terminal=True)
                 continue
-            print(f"[INFO]: Processing sheet: {sheet} ({df.shape[0]} rows)")
+            self._log(f"[INFO]: Processing sheet: {sheet} ({df.shape[0]} rows)", to_terminal=True)
 
             sheet_folder = os.path.join("TAKs", sheet)
             os.makedirs(sheet_folder, exist_ok=True)
@@ -85,42 +102,44 @@ class TAKAutomator:
                 feedback = ""
                 
                 if tak_id in self.registry:
-                    print(f"[SKIP]: TAK {tak_id} already generated as {self.registry[tak_id]}")
+                    self._log(f"[SKIP]: TAK {tak_id} already generated as {self.registry[tak_id]}", to_terminal=True)
                     continue
-                print(f"[RUNTIME STATUS]: Generating TAK ID={tak_id}, NAME={tak_name}")
+                self._log(f"[INFO]: Generating TAK ID={tak_id}, NAME={tak_name}", to_terminal=True)
                 for i in range(self.max_iters):
                     prompt = self._build_prompt(sheet, row, feedback, prev_outputs)
                     tak_text = self.llm.generate_response(prompt)
-                    prev_outputs.append(tak_text)
 
                     valid, ind, messages = self.tak_validator.validate(tak_text, tak_id)
                     messages_str = ind + '; '.join(messages)
-                    print(f"[GENERATED TAK VALIDATION MESSAGE]: {messages_str}")
+                    self._log(f"[ATTEMPT={i+1}, GENERATED TAK VALIDATION MESSAGE]: {messages_str}")
                     if valid:
                         filename = f"{sheet.upper()}_{tak_name}.xml"
                         self._write_file(sheet_folder, filename, tak_text)
                         self.registry[tak_id] = filename
                         self._save_registry()
-                        print(f"[INFO]: Saved TAK ID={tak_id}, NAME={tak_name}")
+                        self._log(f"[INFO]: Saved TAK ID={tak_id}, NAME={tak_name}", to_terminal=True)
                         break
-                    elif tak_text in prev_outputs[:-1] and all(['Note: This validation might not be accurate' in m for m in messages]):
-                        filename = f"{sheet.upper()}_{tak_name}.xml"
+                    elif (tak_text in prev_outputs[:-1] or i == self.max_iters - 1) and all(['Note: This validation might not be accurate due to code issue' in m for m in messages]):
+                        filename = f"{sheet.upper()}_VALIDATE_{tak_name}.xml"
                         self._write_file(sheet_folder, filename, tak_text)
                         self.registry[tak_id] = filename
                         self._save_registry()
-                        print(f"[WARNING]: Saved TAK ID={tak_id}, NAME={tak_name}. TAKok was unable to validate it's attr values so you might want to manually examine the output file: {filename}.")
+                        self._log(f"[WARNING]: Saved TAK ID={tak_id}, NAME={tak_name}. TAKok was unable to validate it's attr values so you might want to manually examine the output file: {filename}.", to_terminal=True)
 
-                    elif i == self.max_iters - 1 or tak_text in prev_outputs[:-1]:
+                    elif i == self.max_iters - 1:
                         filename = f"{sheet.upper()}_INVALID_{tak_name}.xml"
                         self._write_file(sheet_folder, filename, tak_text)
                         self.registry[tak_id] = filename
                         self._save_registry()
-                        print(f"[WARNING]: Saved invalid TAK for manual check: {filename}. Errors: {messages_str}")
+                        self._log(f"[WARNING]: Saved invalid TAK for manual check: {filename}. Errors: {messages_str}")
+                        print(f"[WARNING]: Saved invalid TAK for manual check: {filename}.")
+
                     else:
+                        prev_outputs.append(tak_text)
                         feedback = messages_str
                     
                 if test_mode:
-                    print("[TEST MODE]: Exiting after first TAK. Bye.")
+                    print("[INFO]: Test Mode, exiting after first TAK. Bye.")
                     return
 
     def _write_file(self, folder: str, filename: str, content: str):
@@ -149,7 +168,7 @@ class TAKAutomator:
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as f:
                 return f.read()
-        print(f"[WARNING]: No template available for {concept_type}")
+        print(f"[ERROR]: No template available for {concept_type}")
         return f"<!-- No template available for {concept_type} -->"
 
     def _format_row_for_prompt(self, row: pd.Series) -> str:

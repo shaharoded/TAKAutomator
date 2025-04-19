@@ -23,7 +23,8 @@ class Excelok:
         self.excel_path = excel_path
         try:
             # Read all sheets as DataFrames with string type (to avoid type conversion issues)
-            self.sheets = pd.read_excel(excel_path, sheet_name=None, dtype=str)
+            self.excel = pd.read_excel(excel_path, sheet_name=None, dtype=str)
+            self.excel = {sheet: df.fillna('') for sheet, df in self.excel.items()}
         except Exception as e:
             raise RuntimeError(f"Failed to load Excel file: {e}")
 
@@ -32,34 +33,34 @@ class Excelok:
         errors = []
 
         # Check required sheets exist
-        missing_sheets = [sheet for sheet in ValidatorConfig.REQUIRED_SHEETS if sheet not in self.sheets]
+        missing_sheets = [sheet for sheet in ValidatorConfig.REQUIRED_SHEETS if sheet not in self.excel]
         if missing_sheets:
             errors.append(f"Missing required sheet(s): {', '.join(missing_sheets)}")
 
         # Validate each sheet if present
-        if "raw_concepts" in self.sheets:
-            valid, msgs = self.validate_raw_concepts(self.sheets["raw_concepts"])
+        if "raw_concepts" in self.excel:
+            valid, msgs = self.validate_raw_concepts(self.excel["raw_concepts"])
             if not valid:
                 msgs = "\n".join(msgs)
                 errors.append(f"raw_concepts: \n{msgs}")
-        if "states" in self.sheets:
-            valid, msgs = self.validate_states(self.sheets["states"])
+        if "states" in self.excel:
+            valid, msgs = self.validate_states(self.excel["states"])
             msgs = "\n".join(msgs)
             if not valid:
                 errors.append(f"states: \n{msgs}")
-        if "events" in self.sheets:
-            valid, msgs = self.validate_events(self.sheets["events"])
+        if "events" in self.excel:
+            valid, msgs = self.validate_events(self.excel["events"])
             if not valid:
                 msgs = "\n".join(msgs)
                 errors.append(f"events: \n{msgs}")
-        if "contexts" in self.sheets:
-            valid, msgs = self.validate_contexts(self.sheets["contexts"])
+        if "contexts" in self.excel:
+            valid, msgs = self.validate_contexts(self.excel["contexts"])
             if not valid:
                 msgs = "\n".join(msgs)
                 errors.append(f"contexts: \n{msgs}")
         
         # Validate unique IDs globally
-        global_ids = sum([self.sheets[sheet]['ID'].dropna().tolist() for sheet in ValidatorConfig.REQUIRED_SHEETS if sheet in self.sheets], [])
+        global_ids = sum([self.excel[sheet]['ID'].dropna().tolist() for sheet in ValidatorConfig.REQUIRED_SHEETS if sheet in self.excel], [])
         if len(global_ids) != len(set(global_ids)):
             errors.append("global-error: Global IDs across raw_concepts, states, and events are not unique.")
         
@@ -141,13 +142,13 @@ class Excelok:
 
         # Gather allowed IDs from raw_concepts and events
         allowed_ids = set()
-        if "raw_concepts" in self.sheets:
-            allowed_ids.update(self.sheets["raw_concepts"]["ID"].dropna().str.strip().tolist())
-        if "events" in self.sheets:
-            allowed_ids.update(self.sheets["events"]["ID"].dropna().str.strip().tolist())
+        if "raw_concepts" in self.excel:
+            allowed_ids.update(self.excel["raw_concepts"]["ID"].dropna().str.strip().tolist())
+        if "events" in self.excel:
+            allowed_ids.update(self.excel["events"]["ID"].dropna().str.strip().tolist())
 
         # Map raw_concepts ID -> TYPE
-        raw_df = self.sheets.get("raw_concepts", pd.DataFrame())
+        raw_df = self.excel.get("raw_concepts", pd.DataFrame())
         raw_types = {
             row["ID"].strip(): row["TYPE"].strip().lower()
             for _, row in raw_df.iterrows()
@@ -287,10 +288,10 @@ class Excelok:
         
         # If DERIVED_FROM is present in events, validate its entries.
         allowed_ids = set()
-        if "raw_concepts" in self.sheets:
-            allowed_ids.update(self.sheets["raw_concepts"]["ID"].dropna().str.strip().tolist())
-        if "events" in self.sheets:
-            allowed_ids.update(self.sheets["events"]["ID"].dropna().str.strip().tolist())
+        if "raw_concepts" in self.excel:
+            allowed_ids.update(self.excel["raw_concepts"]["ID"].dropna().str.strip().tolist())
+        if "events" in self.excel:
+            allowed_ids.update(self.excel["events"]["ID"].dropna().str.strip().tolist())
         for idx, row in df.iterrows():
             derived = row["ATTRIBUTES"].strip() if pd.notna(row["ATTRIBUTES"]) else ""
             if derived:
@@ -318,8 +319,8 @@ class Excelok:
         # Dynamically compute all valid IDs from the other TAK sheets
         valid_ids = set()
         for sheet in ["raw_concepts", "states", "events"]:
-            if sheet in self.sheets:
-                valid_ids.update(self.sheets[sheet]["ID"].dropna().astype(str).tolist())
+            if sheet in self.excel:
+                valid_ids.update(self.excel[sheet]["ID"].dropna().astype(str).tolist())
 
         # Check for duplicate IDs
         if df["ID"].duplicated().any():
