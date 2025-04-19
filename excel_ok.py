@@ -60,9 +60,21 @@ class Excelok:
                 errors.append(f"contexts: \n{msgs}")
         
         # Validate unique IDs globally
-        global_ids = sum([self.excel[sheet]['ID'].dropna().tolist() for sheet in ValidatorConfig.REQUIRED_SHEETS if sheet in self.excel], [])
+        global_ids = sum([
+            self.excel[sheet]['ID'].dropna().tolist() 
+            for sheet in ValidatorConfig.REQUIRED_SHEETS 
+            if sheet in self.excel], [])
         if len(global_ids) != len(set(global_ids)):
             errors.append("global-error: Global IDs across raw_concepts, states, and events are not unique.")
+        
+        # Validate unique TAK_NAMEs globally
+        global_names = sum([
+            self.excel[sheet]['TAK_NAME'].dropna().astype(str).tolist()
+            for sheet in ValidatorConfig.REQUIRED_SHEETS
+            if sheet in self.excel], [])
+
+        if len(global_names) != len(set(global_names)):
+            errors.append("global-error: TAK_NAME values across sheets are not unique.")
         
         if errors:
             return False, "!!!Excel file in invalid!!!\n" + "; ".join(errors)

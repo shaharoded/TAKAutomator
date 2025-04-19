@@ -7,7 +7,7 @@ import os
 import shutil
 import zipfile
 from tak_automator import TAKAutomator
-from Config.agent_config import AgentConfig
+from Config.general_config import GeneralConfig
 
 def copy_and_compress_files(source_dir, files_to_remove, zip_name):
     tmp_dir=f'/tmp/{zip_name}'
@@ -71,7 +71,7 @@ def main_menu():
         elif choice == "3":
             source_directory = os.path.join(os.getcwd(), "TAKs")
             zip_name = input("Enter zip name (e.g. '1600'): ").strip()
-            files_to_remove = ['STATE_BASAL_BITZUA.xml', 'STATE_BOLUS_BITZUA.xml']  # You can hardcode or dynamically add known invalids here
+            files_to_remove = GeneralConfig.FILES_TO_REMOVE
             copy_and_compress_files(source_directory, files_to_remove, zip_name)
         elif choice == "0":
             print("👋 Exiting.")

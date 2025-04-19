@@ -24,6 +24,7 @@ TAKAutomator/
 ├── Config/                     # Configuration files (paths,constants, engine)
 ├────── agent_config.py         # Parameters file for LLM agent
 ├────── validator_config.py     # Parameters file for validator program
+├────── general_config.py       # Parameters file for main program
 ├── TAKs/                       # Srotes the generated TAK files (auto-generated duting run())
 ├── tak_automator.py            # Main automation logic (TAKAutomator class)
 ├── llm_agent.py                # LLM agent wrapper for OpenAI API
