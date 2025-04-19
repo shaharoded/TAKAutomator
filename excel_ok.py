@@ -64,8 +64,13 @@ class Excelok:
             self.excel[sheet]['ID'].dropna().tolist() 
             for sheet in ValidatorConfig.REQUIRED_SHEETS 
             if sheet in self.excel], [])
-        if len(global_ids) != len(set(global_ids)):
-            errors.append("global-error: Global IDs across raw_concepts, states, and events are not unique.")
+        
+        # Identify duplicates
+        duplicates = pd.Series(global_ids)
+        duplicate_ids = duplicates[duplicates.duplicated()].unique().tolist()
+
+        if duplicate_ids:
+            errors.append(f"global-error: Duplicate IDs found across sheets: {duplicate_ids}")
         
         # Validate unique TAK_NAMEs globally
         global_names = sum([
@@ -73,8 +78,11 @@ class Excelok:
             for sheet in ValidatorConfig.REQUIRED_SHEETS
             if sheet in self.excel], [])
 
-        if len(global_names) != len(set(global_names)):
-            errors.append("global-error: TAK_NAME values across sheets are not unique.")
+        duplicates = pd.Series(global_names)
+        duplicate_names = duplicates[duplicates.duplicated()].unique().tolist()
+
+        if duplicate_names:
+            errors.append(f"global-error: Duplicate TAK_NAMEs found across sheets: {duplicate_names}")
         
         if errors:
             return False, "!!!Excel file in invalid!!!\n" + "; ".join(errors)
