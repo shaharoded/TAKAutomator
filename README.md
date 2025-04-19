@@ -32,6 +32,7 @@ TAKAutomator/
 ├── main.py                     # API activation and package compression.
 ├── tak_templates/              # Templates for each TAK concept type (used for LLM guidance)
 ├── tak_registry.json           # Local tracking of already-generated TAKs (auto-generated duting run())
+├── log_sheet.txt               # Log file to monitor errors / warnings.
 ├── requirements.txt            # Python dependencies
 ├── schema.xsd                  # A valid schema file used to validate the TAK files
 ├── schema_for_spyxml.txt       # The legacy schema in the lab. Non compatible with Python but compatible with SPY-XML
@@ -82,7 +83,7 @@ pip install -r requirements.txt
 - Iterate through required sheets (`ValidatorConfig.REQUIRED_SHEETS`).
 - Generate TAK XMLs one by one using GPT, validating each.
 - Valid TAKs are saved in TAKs/<sheet_name>/ folders.
-- Invalid TAKs are also saved with _INVALID_ substring for manual review. Rejects will be printed in terminal.
+- Invalid TAKs are also saved with _INVALID_ substring for manual review. Rejects will be logged in `log_sheet.txt`.
 
 To test with a single TAK and avoid burning LLM quota, run in test mode:
 
@@ -107,7 +108,7 @@ automator.run(test_mode=True)
     - trends
     - states to non-numeric concepts? No format / validation at the moment
     - states and contexts can only handle 1 inducer/derived ID at the moment. To expand we'll need to enhance the logic.
-3. Validation problem in TAKok for raw_concepts, as it will somtime fail to find the actual value in the XML to compare against the Excel, which will result in a warning that is not true. Mostly annoying but harmless.
+3. Validation problem in TAKok for raw_concepts, as it will sometime fail to find the actual value in the XML to compare against the Excel, which will result in a warning that is not true. Mostly annoying but harmless. These TAKs will be saved with the prefix _VALIDATE_ so you can manually monitor them. Happens mostry in `numeric-raw-concept` files where some values are under tricky hierarchies.
 
 ## Notes
 - Templates are stored under `tak_templates/` and must match Excel concept types
