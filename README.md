@@ -31,6 +31,7 @@ TAKAutomator/
 ├── tak_ok.py                   # TAK validation logic (schema + business rules)
 ├── excel_ok.py                 # Excel validation logic
 ├── main.py                     # API activation and package compression.
+├── utils.py                    # A few utility functions shared accross modules
 ├── tak_templates/              # Templates for each TAK concept type (used for LLM guidance)
 ├── tak_registry.json           # Local tracking of already-generated TAKs (auto-generated duting run())
 ├── log_sheet.txt               # Log file to monitor errors / warnings.

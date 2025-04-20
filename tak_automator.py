@@ -9,6 +9,7 @@ from Config.agent_config import AgentConfig
 from tak_ok import TAKok
 from excel_ok import Excelok
 from llm_agent import LLMAgent
+from utils import get_template
 
 
 class TAKAutomator:
@@ -153,23 +154,6 @@ class TAKAutomator:
         """
         with open(os.path.join(folder, filename), 'w', encoding='utf-8') as f:
             f.write(content)
-    
-    def _get_template(self, concept_type: str) -> str:
-        """
-        Loads the appropriate XML template from the `tak_templates` directory.
-
-        Args:
-            concept_type (str): TAK type (e.g., 'nominal-raw-concept')
-
-        Returns:
-            str: Contents of the XML template with placeholders
-        """
-        template_path = os.path.join("tak_templates", f"{concept_type}.xml")
-        if os.path.exists(template_path):
-            with open(template_path, 'r', encoding='utf-8') as f:
-                return f.read()
-        print(f"[ERROR]: No template available for {concept_type}")
-        return f"<!-- No template available for {concept_type} -->"
 
     def _format_row_for_prompt(self, row: pd.Series) -> str:
         """
@@ -202,7 +186,7 @@ class TAKAutomator:
             str: A full prompt string to be sent to the LLM.
         """
         concept_type = row.get("TYPE", "").strip() if sheet == 'raw_concepts' else sheet
-        template = self._get_template(concept_type)
+        template = get_template(sheet, row)
 
         parts = [
             f"You are creating a TAK file of type '{concept_type}', named '{row['TAK_NAME']}' with ID '{row['ID']}'.",

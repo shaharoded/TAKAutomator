@@ -84,6 +84,17 @@ class Excelok:
         if duplicate_names:
             errors.append(f"global-error: Duplicate TAK_NAMEs found across sheets: {duplicate_names}")
         
+        # Validate all raw_concepts are referenced at least once in other sheets.
+        raw_concepts_refs = set(
+            pd.to_numeric(self.excel['states']["DERIVED_FROM"], errors='coerce').dropna().astype(int).tolist() +
+            pd.to_numeric(self.excel['events']["ATTRIBUTES"], errors='coerce').dropna().astype(int).tolist() +
+            pd.to_numeric(self.excel['contexts']["INDUCER_ID"], errors='coerce').dropna().astype(int).tolist()
+        )
+        raw_concept_ids = set(self.excel['raw_concepts']["ID"].dropna().astype(int).tolist())
+        missing_refs = raw_concept_ids - raw_concepts_refs
+        if missing_refs:
+            print(f"[Warning]: raw_concepts are defined but not referenced in other sheets in their DERIVED_FROM or ATTRIBUTES fields: {', '.join(map(str, missing_refs))}")
+        
         if errors:
             return False, "!!!Excel file in invalid!!!\n" + "; ".join(errors)
         return True, "Excel file is valid."

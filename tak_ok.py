@@ -7,6 +7,7 @@ import re
 
 # Local Code
 from Config.validator_config import ValidatorConfig
+from utils import get_template
 
 
 class TAKok:
@@ -150,12 +151,12 @@ class TAKok:
                     if not tg.get("value") or not tg.get("granularity"):
                         issues.append(f"Clipper {clipper.get('id')} has invalid <time-gap> settings.")
         
-        concept_type = row.get("TYPE", "").lower() if sheet == "raw_concepts" else root_tag
-        template_str = self._get_template(concept_type)
-        if template_str:
-            issues += self._validate_against_businesslogic_values(doc, row, template_str)
+        # Get correct template
+        template_str = get_template(sheet, row)
+        issues += self._validate_against_businesslogic_values(doc, row, template_str)
         if sheet in ["raw_concepts", "states"]:
-            issues += self._validate_allowed_values_against_excel(doc, row) 
+            issues += self._validate_allowed_values_against_excel(doc, row)
+
         if issues:
             return False, "Business logic issues: ", issues
 
@@ -182,24 +183,6 @@ class TAKok:
             "scenario": "scenarios"
         }
         return tag_to_sheet.get(tag)
-    
-    def _get_template(self, concept_type: str) -> str:
-        """
-        Loads the appropriate XML template from the `tak_templates` directory.
-
-        Args:
-            concept_type (str): TAK type (e.g., 'nominal-raw-concept')
-
-        Returns:
-            str: Contents of the XML template with placeholders
-        """
-        concept_type = concept_type if 'raw' in concept_type else f'{concept_type}s'
-        template_path = os.path.join("tak_templates", f"{concept_type}.xml")
-        if os.path.exists(template_path):
-            with open(template_path, 'r', encoding='utf-8') as f:
-                return f.read()
-        print(f"[WARNING]: No template available for {concept_type}")
-        return f"<!-- No template available for {concept_type} -->"
 
     def _validate_state_range_coverage(self, doc: etree._Element, excel_bins: List[Tuple[float, float]]) -> List[str]:
         """
