@@ -87,7 +87,7 @@ class TAKok:
         df = self.excel[sheet]
         row = df[df['ID'] == tak_id]
         if row.empty:
-            return False, 'Critical error: ', f"No matching ID '{tak_id}' found in sheet '{sheet}'."
+            return False, 'Critical error: ', [f"No matching ID '{tak_id}' found in sheet '{sheet}'."]
 
         # === BUSINESS LOGIC VALIDATION ===
         row = row.iloc[0]
@@ -450,4 +450,4 @@ if __name__ == "__main__":
     if valid:
         print("TAK file is valid!")
     else:
-        print("TAK file is invalid:", ind + '; '.join(messages))
+        print("TAK file is invalid:", ind + "; ".join(messages))

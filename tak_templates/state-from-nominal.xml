@@ -5,6 +5,7 @@
   <synonyms/>
   <temporal-semantic downward-hereditary="{TEMPORAL_downward-hereditary}" forward="{TEMPORAL_forward}" backward="{TEMPORAL_backward}" solid="{TEMPORAL_solid}" concatenable="{TEMPORAL_concatenable}" gestalt="{TEMPORAL_gestalt}"/>
   <clippers/>
+
   <derived-from>
     <derived-from-id>{DERIVED_FROM}</derived-from-id>
   </derived-from>
@@ -17,6 +18,7 @@
         </necessary-contexts>
         <exclusion-contexts/>
       </at-context>
+
       <state-at-context id="{ID}" name="{TAK_NAME}" concept-type="state">
         <categories/>
         <standard-terms/>
@@ -28,15 +30,18 @@
         </derived-from>
         <abstraction-at-contexts/>
 
-        <mapping-function rank-selection-criteria="{Mapping_Rank_Selection_Criteria}">
+        <!-- Mapping nominal values to state labels -->
+        <mapping-function rank-selection-criteria="{RANK_SELECTION_CRITERIA}">
           <mapping-functions-to-values>
+
+            <!-- Repeat this block for each nominal value -->
             <!-- 
-            Each block maps a **nominal value** to a corresponding **ordinal label**
-            → STATE_LABELS[idx] = Ordinal label you want to show
-            → RAW_VALUES[idx] = Nominal value appearing in the raw concept
-            ✔ Ensure the value exists in the raw concept definition
-            ✔ Keep mapping-function-2-value blocks in increasing order
-            -->
+            Each block maps a specific nominal raw value to a state label.
+            → RAW_VALUES[idx] = input value from raw concept
+            → STATE_LABELS[idx] = output value in the state
+
+            ✔ Each ordinal value must have a matching block here.
+            --> 
             <mapping-function-2-value order="0" value="{STATE_LABELS[0]}">
               <evaluation-tree data-type="comparison-function">
                 <comparison-function comparison-operator="equal">
@@ -44,16 +49,18 @@
                     <concept-id-allowed-values id="{DERIVED_FROM}"/>
                   </left>
                   <right data-type="string">
-                    <string>{RAW_VALUES[0]}</string>
+                    <string>{STATE_LABELS[0]}</string>
                   </right>
                 </comparison-function>
               </evaluation-tree>
             </mapping-function-2-value>
-            <!-- Duplicate this block for each additional value: -->
-            <!-- order="1", value="{STATE_LABELS[1]}" with string "{RAW_VALUES[1]}" -->
+
+            <!-- Add mapping-function-2-value blocks with incremented orders for each nominal category -->
+          
           </mapping-functions-to-values>
         </mapping-function>
 
+        <!-- Define output ordinal values -->
         <ordinal-allowed-values output-type="ordinal">
           <persistence>
             <global-persistence granularity="second" behavior="pos-pos">
@@ -62,24 +69,25 @@
               </interpolation-table>
             </global-persistence>
             <local-persistence>
-              <good-before value="{LOCAL_PERSISTENCE_GOOD_BEFORE_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_BEFORE_GRANULARITY}"/>
-              <good-after value="{LOCAL_PERSISTENCE_GOOD_AFTER_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_AFTER_GRANULARITY}"/>
+              <good-before value="{GOOD_BEFORE_VALUE}" granularity="{GOOD_BEFORE_GRANULARITY}"/>
+              <good-after value="{GOOD_AFTER_VALUE}" granularity="{GOOD_AFTER_GRANULARITY}"/>
             </local-persistence>
           </persistence>
           <values>
             <ordinal-allowed-value order="0" value="{STATE_LABELS[0]}"/>
-            <!-- Add more values as needed, incrementing order -->
+            <!-- Repeat for additional values -->
           </values>
         </ordinal-allowed-values>
       </state-at-context>
     </abstraction-at-context>
   </abstraction-at-contexts>
 
-  <!-- Required by schema but unused -->
+  <!-- Empty root-level mapping function required by schema -->
   <mapping-function>
     <mapping-functions-to-values/>
   </mapping-function>
 
+  <!-- Root-level ordinal values required by schema -->
   <ordinal-allowed-values output-type="ordinal">
     <persistence>
       <global-persistence granularity="second" behavior="pos-pos">
@@ -88,13 +96,13 @@
         </interpolation-table>
       </global-persistence>
       <local-persistence>
-        <good-before value="{LOCAL_PERSISTENCE_GOOD_BEFORE_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_BEFORE_GRANULARITY}"/>
-        <good-after value="{LOCAL_PERSISTENCE_GOOD_AFTER_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_AFTER_GRANULARITY}"/>
+        <good-before value="{GOOD_BEFORE_VALUE}" granularity="{GOOD_BEFORE_GRANULARITY}"/>
+        <good-after value="{GOOD_AFTER_VALUE}" granularity="{GOOD_AFTER_GRANULARITY}"/>
       </local-persistence>
     </persistence>
     <values>
       <ordinal-allowed-value order="0" value="{STATE_LABELS[0]}"/>
-      <!-- Same STATE_LABELS as above -->
+      <!-- Repeat for each ordinal category -->
     </values>
   </ordinal-allowed-values>
 </state>
