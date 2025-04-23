@@ -58,7 +58,11 @@ class Excelok:
             if not valid:
                 msgs = "\n".join(msgs)
                 errors.append(f"contexts: \n{msgs}")
-        
+        if "trends" in self.excel:
+            valid, msgs = self.validate_trends(self.excel["trends"])
+            if not valid:
+                msgs = "\n".join(msgs)
+                errors.append(f"trends: \n{msgs}")
         # Validate unique IDs globally
         global_ids = sum([
             self.excel[sheet]['ID'].dropna().tolist() 
@@ -391,6 +395,73 @@ class Excelok:
                 errors.append(f"Row {idx+2} (ID={row_id}): " + "; ".join(row_errors))
 
         return (False, errors) if errors else (True, ["Contexts are valid."])
+    
+    def validate_trends(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
+        """
+        Validate structure and content of trends sheet.
+        
+        Rules:
+        - All DERIVED_FROM must refer to either:
+            - a raw-numeric concept (from raw_concepts sheet), or
+            - an event that contains at least one raw-numeric attribute.
+        """
+        errors = []
+
+        # Empty or duplicate ID checks
+        if df["ID"].isnull().any() or (df["ID"].astype(str).str.strip() == "").any():
+            errors.append("One or more rows in trends have an empty ID.")
+        if df["ID"].duplicated().any():
+            errors.append("IDs in trends are not unique.")
+
+        # Prepare numeric raw concept IDs
+        numeric_raw_ids = set()
+        if "raw_concepts" in self.excel:
+            raw_df = self.excel["raw_concepts"]
+            numeric_raw_ids = set(
+                raw_df[raw_df["TYPE"].str.lower().str.strip() == "numeric-raw-concept"]["ID"]
+                .dropna()
+                .astype(str)
+                .str.strip()
+            )
+
+        # Map event ID to its attribute IDs
+        event_to_attributes = {}
+        if "events" in self.excel:
+            for _, row in self.excel["events"].iterrows():
+                event_id = str(row["ID"]).strip()
+                attr_str = str(row.get("ATTRIBUTES", "")).strip()
+                attr_ids = [a.strip() for a in attr_str.split(",") if a.strip()]
+                event_to_attributes[event_id] = attr_ids
+
+        # Validate each DERIVED_FROM
+        for idx, row in df.iterrows():
+            derived = row.get("DERIVED_FROM", "")
+            derived = str(derived).strip()
+            if not derived:
+                errors.append(f"Row {idx+2} (ID={row['ID']}): DERIVED_FROM is empty.")
+                continue
+
+            for d in derived.split(","):
+                d = d.strip()
+                if not d:
+                    continue
+
+                if d in numeric_raw_ids:
+                    continue  # ✅ Valid: direct numeric concept
+
+                elif d in event_to_attributes:
+                    # Must reference at least one numeric concept
+                    attr_ids = event_to_attributes[d]
+                    numeric_found = any(attr in numeric_raw_ids for attr in attr_ids)
+                    if not numeric_found:
+                        errors.append(f"Row {idx+2} (ID={row['ID']}): Event '{d}' has no numeric attributes.")
+                else:
+                    errors.append(f"Row {idx+2} (ID={row['ID']}): DERIVED_FROM contains invalid ID '{d}' (not a numeric raw concept or known event).")
+
+        if errors:
+            return False, errors
+        return True, ["Trends are valid."]
+    
 
 
 if __name__ == "__main__":

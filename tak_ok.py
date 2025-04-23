@@ -151,6 +151,33 @@ class TAKok:
                     if not tg.get("value") or not tg.get("granularity"):
                         issues.append(f"Clipper {clipper.get('id')} has invalid <time-gap> settings.")
         
+        elif sheet == "trends":
+            # === Validate <derived-from> presence ===
+            if doc.find(".//derived-from") is None:
+                issues.append("Missing <derived-from> block in trend.")
+
+            # === Validate gradient-trend-allowed-values ===
+            if doc.find(".//gradient-trend-allowed-values") is None:
+                issues.append("Missing <gradient-trend-allowed-values> in trend.")
+
+            # === Validate ordinal labels ===
+            trend_labels = {"DEC", "SAME", "INC"}
+            found_labels = {
+                ov.get("value") for ov in doc.findall(".//ordinal-allowed-value")
+                if ov.get("value")
+            }
+            missing = trend_labels - found_labels
+            if missing:
+                issues.append(f"Missing expected trend label(s): {', '.join(sorted(missing))}")
+
+            # === Validate time-steady block ===
+            time_steady = doc.find(".//time-steady")
+            if time_steady is None:
+                issues.append("Missing <time-steady> block in trend.")
+            else:
+                if not time_steady.get("value") or not time_steady.get("granularity"):
+                    issues.append("Missing or empty 'value' or 'granularity' attributes in <time-steady>.")
+
         # Get correct template
         template_str = get_template(sheet, row)
         issues += self._validate_against_businesslogic_values(doc, row, template_str)
@@ -180,6 +207,7 @@ class TAKok:
             "event": "events",
             "pattern": "patterns",
             "context": "contexts",
+            "trend": "trends",
             "scenario": "scenarios"
         }
         return tag_to_sheet.get(tag)
@@ -348,11 +376,41 @@ class TAKok:
             return f".//{tag_name}"
 
         def get_xml_value_dynamic(field: str) -> str:
-            # First try known patterns
+            # First try known fields
             if field == "ID":
                 return doc.get("id", "").strip()
             elif field == "TAK_NAME":
                 return doc.get("name", "").strip()
+
+            # Custom fields for trend logic
+            if field == "SIGNIFICANT_VARIATION":
+                return doc.get("significant-variation", "").strip()
+            
+            if field == "TIME_STEADY_VALUE":
+                el = doc.find(".//time-steady")
+                return el.get("value", "").strip() if el is not None else ""
+
+            if field == "TIME_STEADY_UNIT":
+                el = doc.find(".//time-steady")
+                return el.get("granularity", "").strip() if el is not None else ""
+
+            # Fallback: infer tag from template
+            path = find_xpath_of_field(field)
+            if not path:
+                return ""
+
+            elements = doc.findall(path)
+            for el in elements:
+                # First check attributes
+                for attr_key, attr_val in el.attrib.items():
+                    if attr_key.lower().endswith(field.lower().split("_")[-1]):
+                        return attr_val.strip()
+
+                # Then check text
+                if el.text and el.text.strip():
+                    return el.text.strip()
+
+            return ""
 
             # Fallback: infer tag from template
             path = find_xpath_of_field(field)
