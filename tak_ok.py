@@ -382,52 +382,29 @@ class TAKok:
             elif field == "TAK_NAME":
                 return doc.get("name", "").strip()
 
-            # Custom fields for trend logic
-            if field == "SIGNIFICANT_VARIATION":
-                return doc.get("significant-variation", "").strip()
-            
-            if field == "TIME_STEADY_VALUE":
-                el = doc.find(".//time-steady")
-                return el.get("value", "").strip() if el is not None else ""
+            # Handle special field mappings dynamically
+            if field in ValidatorConfig.SPECIAL_FIELD_MAP:
+                tag, attr = ValidatorConfig.SPECIAL_FIELD_MAP[field]
+                
+                # Only add .// if tag doesn't already start with it
+                xpath = tag if tag is None else (tag if tag.startswith(".//") else f".//{tag}")
 
-            if field == "TIME_STEADY_UNIT":
-                el = doc.find(".//time-steady")
-                return el.get("granularity", "").strip() if el is not None else ""
+                search_root = doc if xpath is None else doc.find(xpath)
+                if search_root is not None:
+                    return search_root.get(attr, "").strip()
+                return ""
 
-            # Fallback: infer tag from template
+            # Fallback to generic template-based extraction
             path = find_xpath_of_field(field)
             if not path:
                 return ""
-
             elements = doc.findall(path)
             for el in elements:
-                # First check attributes
                 for attr_key, attr_val in el.attrib.items():
                     if attr_key.lower().endswith(field.lower().split("_")[-1]):
                         return attr_val.strip()
-
-                # Then check text
                 if el.text and el.text.strip():
                     return el.text.strip()
-
-            return ""
-
-            # Fallback: infer tag from template
-            path = find_xpath_of_field(field)
-            if not path:
-                return ""
-
-            elements = doc.findall(path)
-            for el in elements:
-                # First check attributes
-                for attr_key, attr_val in el.attrib.items():
-                    if attr_key.lower().endswith(field.lower().split("_")[-1]):
-                        return attr_val.strip()
-
-                # Then check text
-                if el.text and el.text.strip():
-                    return el.text.strip()
-
             return ""
 
         issues = []

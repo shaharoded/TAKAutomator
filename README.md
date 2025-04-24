@@ -105,9 +105,11 @@ automator.run(test_mode=True)
 ## TO-DOs and Improvements
 
 1. Extend support for additional TAK types:
-    - pattern
+    - patterns
+    - scenarios
     - states and contexts can only handle 1 inducer/derived ID at the moment. To expand we'll need to enhance the logic.
-2. Validation problem in TAKok for raw_concepts, as it will sometime fail to find the actual value in the XML to compare against the Excel, which will result in a warning that is not true. This happens because the validation function fails to correctly retrieve all of the values that should appear in the template from the generated TAK. Mostly annoying but harmless. These TAKs will be saved with the prefix _VALIDATE_ so you can manually monitor them. Happens mostry in `numeric-raw-concept` files where some values are under tricky hierarchies.
+
+NOTE: When defining new templates validation problems might happen in TAKok, as it will sometime fail to find the actual value in the XML to compare against the Excel, which will result in a warning that is not true. This happens because the validation function fails to correctly retrieve all of the values that should appear in the template from the generated TAK. These TAKs will be saved with the prefix _VALIDATE_ so you can manually monitor them. In order to solve locally, you'll need to update the param `ValidatorConfig.SPECIAL_FIELD_MAP` that contains direct paths to these problematic attributes.
 
 ## Notes
 - Templates are stored under `tak_templates/` and must match Excel concept types
