@@ -3,7 +3,11 @@ import tiktoken
 from typing import Union
 
 # Local Code
-from secret_keys import OPENAI_API_KEYS
+try:
+    from secret_keys import OPENAI_API_KEYS
+except ImportError as e:
+    raise ImportError("file secret_keys.py with the OpenAI API key is not defined. Please add one in the root repo with a parameter as displayed in this module to access the LLM.")
+
 from Config.agent_config import AgentConfig
 
 
