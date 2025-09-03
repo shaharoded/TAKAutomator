@@ -20,8 +20,8 @@
         </interpolation-table>
       </global-persistence>
       <local-persistence>
-        <good-before value="0" granularity="second"/>
-        <good-after value="0" granularity="second"/>
+        <good-before value="{LOCAL_PERSISTENCE_GOOD_BEFORE_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_BEFORE_UNIT}"/>
+        <good-after value="{LOCAL_PERSISTENCE_GOOD_AFTER_VALUE}" granularity="{LOCAL_PERSISTENCE_GOOD_AFTER_UNIT}"/>
       </local-persistence>
     </persistence>
     <values>
