@@ -21,12 +21,67 @@ class Excelok:
     """
     def __init__(self, excel_path: str):
         self.excel_path = excel_path
+        self.warnings = []
         try:
             # Read all sheets as DataFrames with string type (to avoid type conversion issues)
             self.excel = pd.read_excel(excel_path, sheet_name=None, dtype=str)
+            for s in ["raw_concepts", "states", "events", "contexts", "trends"]:
+                if s in self.excel:
+                    self._drop_rows_without_id(s)
             self.excel = {sheet: df.fillna('') for sheet, df in self.excel.items()}
         except Exception as e:
             raise RuntimeError(f"Failed to load Excel file: {e}")
+        
+    
+    def _drop_rows_without_id(self, sheet: str, id_col: str = "ID",
+                            name_cols=("TAK_NAME",)):
+        """
+        - Coerce ID to numeric; rows with empty / whitespace / non-numeric IDs are dropped.
+        - Warn with the human-readable names of the dropped rows (best-effort).
+        - Cast the remaining ID to int (so downstream .astype(int) never blows up).
+        - Also drops duplicate IDs (keep first) with a warning.
+        """
+        if sheet not in self.excel:
+            return
+        df = self.excel[sheet]
+        if id_col not in df.columns:
+            return
+
+        # Normalize to strings once
+        id_str = df[id_col].astype(str).str.strip()
+
+        # Bad IDs: empty or non-digit
+        bad_mask = (id_str == "") | ~id_str.str.fullmatch(r"\d+")
+        name_col = next((c for c in name_cols if c in df.columns), None)
+
+        if bad_mask.any():
+            if name_col:
+                names = (df.loc[bad_mask, name_col].astype(str).str.strip()
+                            .replace({"": "(unnamed)"}).tolist())
+            else:
+                names = [f"row#{i}" for i in df.index[bad_mask].tolist()]
+            msg = (f"[Warning][{sheet}] The following items didn't have a valid numeric ID "
+                f"and will be ignored: {names}")
+            print(msg)
+            self.warnings.append(msg)
+
+        # Keep good rows and keep ID as string
+        df = df.loc[~bad_mask].copy()
+        df[id_col] = df[id_col].astype(str).str.strip()
+
+        # Duplicate IDs (exact string match)
+        if not df.empty:
+            dup_mask = df.duplicated(subset=[id_col], keep="first")
+            if dup_mask.any():
+                cols = [id_col] + ([name_col] if name_col else [])
+                listed = df.loc[dup_mask, cols].to_dict(orient="records")
+                msg = f"[Warning][{sheet}] Duplicate IDs found (kept first, dropped rest): {listed}"
+                print(msg)
+                self.warnings.append(msg)
+                df = df.loc[~dup_mask].copy()
+
+        self.excel[sheet] = df
+
 
     def validate(self) -> Tuple[bool, str]:
         """Top-level validation entrypoint that applies specific sheet validations."""
@@ -92,16 +147,21 @@ class Excelok:
         raw_concepts_refs = set(
             pd.to_numeric(self.excel['states']["DERIVED_FROM"], errors='coerce').dropna().astype(int).tolist() +
             pd.to_numeric(self.excel['events']["ATTRIBUTES"], errors='coerce').dropna().astype(int).tolist() +
-            pd.to_numeric(self.excel['contexts']["INDUCER_ID"], errors='coerce').dropna().astype(int).tolist()
+            pd.to_numeric(self.excel['contexts']["INDUCER_ID"], errors='coerce').dropna().astype(int).tolist() +
+            pd.to_numeric(self.excel['trends']["DERIVED_FROM"], errors='coerce').dropna().astype(int).tolist()
         )
         raw_concept_ids = set(self.excel['raw_concepts']["ID"].dropna().astype(int).tolist())
         missing_refs = raw_concept_ids - raw_concepts_refs
         if missing_refs:
-            print(f"[Warning]: raw_concepts are defined but not referenced in other sheets in their DERIVED_FROM or ATTRIBUTES fields: {', '.join(map(str, missing_refs))}")
+            print(f"[Warning]: raw_concepts are defined but not referenced in other sheets in their DERIVED_FROM or ATTRIBUTES fields, IDs= {', '.join(map(str, missing_refs))}")
         
         if errors:
             return False, "!!!Excel file in invalid!!!\n" + "; ".join(errors)
-        return True, "Excel file is valid."
+        msg = "Excel file is valid."
+        if self.warnings:
+            msg += "\n" + "\n".join(self.warnings)
+        return True, msg
+    
 
     def validate_raw_concepts(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
         """
