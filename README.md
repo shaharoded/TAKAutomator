@@ -106,29 +106,29 @@ automator.run(test_mode=True)
 | **Pattern** *(future)* | Composition of states/events/contexts/trends in specific order or logic. | Existing TAKs (as building blocks). | Yes (composable) | You need multi-step constructs (e.g., “hypotension despite fluids”, “rebound hyperglycemia”). | Temporal relations, sequence windows, logical operators. | “DKA_PATTERN”: Ketones high + glucose high + bicarbonate low with overlap. |
 | **Scenario** *(future)* | High-level clinical storyline comprising multiple patterns and contexts. | Patterns + contexts + events. | Yes (long horizon) | You need coarse-grained pathways (“perioperative course”, “sepsis workup”). | Phase boundaries, entry/exit criteria. |
 
-> Notes
-> 
-> • Trends: “time-steady” vs “local persistence”
->   – time-steady = the minimum continuous duration that a level/gradient must hold before we call it a trend (e.g., ≥12h of rising troponin).  
->   – local persistence (good-before / good-after) = the stitching tolerance between adjacent qualifying points: how far apart two samples may be and still belong to the same trend interval.  
->     • good-before: how far back a prior point can be and still count as contiguous.  
->     • good-after: how far forward the next point can be and still keep the interval alive.  
->   – In the XML, units are expressed with the `granularity` attribute (not “unit”).  
->   – Intuition: time-steady guards against noisy blips; local persistence guards against sparse sampling.
-> 
-> • What the Mediator emits vs what we train on
->   – By default the Mediator emits: States, Trends, Contexts, and (often) suppresses Events and Raw Concepts.  
->   – Workflow we use:
->     1) Define background/observational signals as Context concepts (e.g., “On statin”, “CKD present”).  
->     2) Allow Patterns to reference these Contexts during mining/validation.  
->     3) After mining, remove background Context intervals from the temporal output **unless** their timing is clinically useful, and copy their information into a static **[CTX]** vector (captured once in the first 24–48h) that we prepend to the model’s sequence.  
->     4) Keep time-bounded Contexts in the temporal stream only when their on/off timing is itself predictive (e.g., “On steroids (day 0–5)”).  
->     5) Treat Events as true point occurrences for modeling: if the Mediator suppressed them, re-inject them as point events in the output so the model can align sequences to clinical actions (e.g., insulin bolus given at T).
-> 
-> • Practical tips
->   – Use Context → static **[CTX]** when the signal is relatively stable over the admission or mainly prognostic (e.g., baseline CKD, albumin in first 48h).  
->   – Keep as temporal (State/Trend/Context) when the timing or dynamics matter for downstream decisions (e.g., rising ketones, hypotension despite fluids, “on vasopressors”).  
->   – For Trends, pick `significant-variation` large enough to ignore noise but small enough to fire on clinically meaningful shifts; pair it with a realistic `time-steady` for the lab’s sampling cadence, and set local persistence to bridge typical gaps in ordering frequency.
+Notes
+ 
+ • Trends: “time-steady” vs “local persistence”
+   – time-steady = the minimum continuous duration that a level/gradient must hold before we call it a trend (e.g., ≥12h of rising troponin).  
+   – local persistence (good-before / good-after) = the stitching tolerance between adjacent qualifying points: how far apart two samples may be and still belong to the same trend interval.  
+     • good-before: how far back a prior point can be and still count as contiguous.  
+     • good-after: how far forward the next point can be and still keep the interval alive.  
+   – In the XML, units are expressed with the `granularity` attribute (not “unit”).  
+   – Intuition: time-steady guards against noisy blips; local persistence guards against sparse sampling.
+ 
+ • What the Mediator emits vs what we train on
+   – By default the Mediator emits: States, Trends, Contexts, and (often) suppresses Events and Raw Concepts.  
+   – Workflow we use:
+     1) Define background/observational signals as Context concepts (e.g., “On statin”, “CKD present”).  
+     2) Allow Patterns to reference these Contexts during mining/validation.  
+     3) After mining, remove background Context intervals from the temporal output **unless** their timing is clinically useful, and copy their information into a static **[CTX]** vector (captured once in the first 24–48h) that we prepend to the model’s sequence.  
+     4) Keep time-bounded Contexts in the temporal stream only when their on/off timing is itself predictive (e.g., “On steroids (day 0–5)”).  
+     5) Treat Events as true point occurrences for modeling: if the Mediator suppressed them, re-inject them as point events in the output so the model can align sequences to clinical actions (e.g., insulin bolus given at T).
+ 
+ • Practical tips
+   – Use Context → static **[CTX]** when the signal is relatively stable over the admission or mainly prognostic (e.g., baseline CKD, albumin in first 48h).  
+   – Keep as temporal (State/Trend/Context) when the timing or dynamics matter for downstream decisions (e.g., rising ketones, hypotension despite fluids, “on vasopressors”).  
+   – For Trends, pick `significant-variation` large enough to ignore noise but small enough to fire on clinically meaningful shifts; pair it with a realistic `time-steady` for the lab’s sampling cadence, and set local persistence to bridge typical gaps in ordering frequency.
 
 
 ## Features
