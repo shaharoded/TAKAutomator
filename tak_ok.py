@@ -1,5 +1,6 @@
 import os
 import json
+from pydoc import doc
 from lxml import etree
 from typing import Tuple, List
 import pandas as pd
@@ -177,6 +178,18 @@ class TAKok:
             else:
                 if not time_steady.get("value") or not time_steady.get("granularity"):
                     issues.append("Missing or empty 'value' or 'granularity' attributes in <time-steady>.")
+            
+            # === Enforce local-persistence presence & attributes ===
+            lp = doc.find(".//local-persistence")
+            if lp is None:
+                issues.append("Missing <local-persistence> in trend persistence.")
+            else:
+                gb = doc.find(".//good-before")
+                ga = doc.find(".//good-after")
+                if gb is None or not gb.get("value") or not gb.get("granularity"):
+                    issues.append("Missing or invalid <good-before value= granularity=> in <local-persistence>.")
+                if ga is None or not ga.get("value") or not ga.get("granularity"):
+                    issues.append("Missing or invalid <good-after value= granularity=> in <local-persistence>.")
 
         # Get correct template
         template_str = get_template(sheet, row)
