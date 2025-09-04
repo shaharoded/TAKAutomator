@@ -26,11 +26,10 @@ class TAKAutomator:
         """
         self.schema_path = ValidatorConfig.SCHEMA_PATH
         self.excel_path = ValidatorConfig.EXCEL_PATH
-        self.excel = pd.read_excel(ValidatorConfig.EXCEL_PATH, sheet_name=None, dtype=str)
-        self.excel = {sheet: df.fillna('') for sheet, df in self.excel.items()}
+        self.excel_validator = Excelok(self.excel_path)
+        self.excel = self.excel_validator.excel
         self.required_sheets = ValidatorConfig.REQUIRED_SHEETS
         self.max_iters = AgentConfig.MAX_ITERS
-        self.excel_validator = Excelok(self.excel_path)
         self.tak_validator = TAKok(self.schema_path, self.excel_path)
         self.llm = LLMAgent()
         self.registry_path = "tak_registry.json"
