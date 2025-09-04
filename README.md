@@ -86,12 +86,50 @@ pip install -r requirements.txt
 - Generate TAK XMLs one by one using GPT, validating each.
 - Valid TAKs are saved in TAKs/<sheet_name>/ folders.
 - Invalid TAKs are also saved with _INVALID_ substring for manual review. Rejects will be logged in `log_sheet.txt`.
+- Possibly invalid TAKs are saved with _VALIDATE_ substring for manual review. These are caused because the validator was unable to parse the TAK hierarchy properly to find the Excel values. Rejects will be logged in `log_sheet.txt`.
 
 To test with a single TAK and avoid burning LLM quota, run in test mode:
 
 ```bash
 automator.run(test_mode=True)
 ```
+
+## When to use each TAK type
+
+| TAK Type | Purpose (What it models) | Derived From | Temporal? | Use When… | Key Fields to Set | Example |
+|---|---|---|---|---|---|---|
+| **Raw Concept** | A base measurable or categorical signal as captured in the source data. | Source system / raw feed. | N/A (foundation) | You need a canonical identifier and bounds/values for something you’ll reuse (labs, vitals, meds, events). | `TYPE` (numeric/nominal/time), allowed range or allowed values, units/scale. | GLUCOSE_LAB_MEASURE, HEART_RATE, INSULIN_BOLUS_DOSE. | 
+| **State** | A discretization (binning) or label over a raw concept (or event attribute). | One raw concept (recommended) or a single event attribute. | Yes (as intervals) | You need clinically meaningful buckets (e.g., Low/Normal/High) or policy thresholds. | `DERIVED_FROM`, `STATE_LABELS`, `MAPPING` (bins cover full range, no gaps/overlaps). | GLUCOSE_MEASURE_STATE with 6 bins from severe hypo → hyper. |
+| **Event** | A point or instantaneous occurrence (procedure, admin action) with optional attributes. | Triggers in source data (and zero or more raw attributes). | Point-in-time | You need to anchor patterns or contexts on something that “happens now”. | `ATTRIBUTES` (list of raw concept IDs), event metadata. | INSULIN_BOLUS_GIVEN with attribute DOSE. |
+| **Context** | A time window derived from an inducer (event/state) that gates meaning of other abstractions. | One inducer (`INDUCER_ID`) + from/until rules (+ optional clipper). | Yes (as intervals) | Something is only relevant within a bounded window (e.g., “On Steroids”, “Post-Op Day 0–3”). | `INDUCER_ID`, `FROM_*`/`UNTIL_*` (bound, shift, granularity), optional `CLIPPER_*`. | “ON_STEROIDS_CONTEXT”: from STEROIDS_DOSAGE start until 7 days after last dose. |
+| **Trend** | Directional change (INC/DEC/SAME) over a numeric raw concept across time. | One numeric raw concept (or numeric event attribute). | Yes (as intervals) | Clinical signal comes from **trajectory** rather than level (e.g., rising Troponin, falling BP). | `significant-variation` (Δ threshold), `time-steady value/granularity`, local/global persistence (good-before/after), derived-from ID. | TROPONIN_MEASURE_TREND with Δ≥20% over ≤12h, local persistence 6h/12h. |
+| **Pattern** *(future)* | Composition of states/events/contexts/trends in specific order or logic. | Existing TAKs (as building blocks). | Yes (composable) | You need multi-step constructs (e.g., “hypotension despite fluids”, “rebound hyperglycemia”). | Temporal relations, sequence windows, logical operators. | “DKA_PATTERN”: Ketones high + glucose high + bicarbonate low with overlap. |
+| **Scenario** *(future)* | High-level clinical storyline comprising multiple patterns and contexts. | Patterns + contexts + events. | Yes (long horizon) | You need coarse-grained pathways (“perioperative course”, “sepsis workup”). | Phase boundaries, entry/exit criteria. |
+
+> Notes
+> 
+> • Trends: “time-steady” vs “local persistence”
+>   – time-steady = the minimum continuous duration that a level/gradient must hold before we call it a trend (e.g., ≥12h of rising troponin).  
+>   – local persistence (good-before / good-after) = the stitching tolerance between adjacent qualifying points: how far apart two samples may be and still belong to the same trend interval.  
+>     • good-before: how far back a prior point can be and still count as contiguous.  
+>     • good-after: how far forward the next point can be and still keep the interval alive.  
+>   – In the XML, units are expressed with the `granularity` attribute (not “unit”).  
+>   – Intuition: time-steady guards against noisy blips; local persistence guards against sparse sampling.
+> 
+> • What the Mediator emits vs what we train on
+>   – By default the Mediator emits: States, Trends, Contexts, and (often) suppresses Events and Raw Concepts.  
+>   – Workflow we use:
+>     1) Define background/observational signals as Context concepts (e.g., “On statin”, “CKD present”).  
+>     2) Allow Patterns to reference these Contexts during mining/validation.  
+>     3) After mining, remove background Context intervals from the temporal output **unless** their timing is clinically useful, and copy their information into a static **[CTX]** vector (captured once in the first 24–48h) that we prepend to the model’s sequence.  
+>     4) Keep time-bounded Contexts in the temporal stream only when their on/off timing is itself predictive (e.g., “On steroids (day 0–5)”).  
+>     5) Treat Events as true point occurrences for modeling: if the Mediator suppressed them, re-inject them as point events in the output so the model can align sequences to clinical actions (e.g., insulin bolus given at T).
+> 
+> • Practical tips
+>   – Use Context → static **[CTX]** when the signal is relatively stable over the admission or mainly prognostic (e.g., baseline CKD, albumin in first 48h).  
+>   – Keep as temporal (State/Trend/Context) when the timing or dynamics matter for downstream decisions (e.g., rising ketones, hypotension despite fluids, “on vasopressors”).  
+>   – For Trends, pick `significant-variation` large enough to ignore noise but small enough to fire on clinically meaningful shifts; pair it with a realistic `time-steady` for the lab’s sampling cadence, and set local persistence to bridge typical gaps in ordering frequency.
+
 
 ## Features
 
@@ -112,7 +150,7 @@ automator.run(test_mode=True)
 NOTE: When defining new templates validation problems might happen in TAKok, as it will sometime fail to find the actual value in the XML to compare against the Excel, which will result in a warning that is not true. This happens because the validation function fails to correctly retrieve all of the values that should appear in the template from the generated TAK. These TAKs will be saved with the prefix _VALIDATE_ so you can manually monitor them. In order to solve locally, you'll need to update the param `ValidatorConfig.SPECIAL_FIELD_MAP` that contains direct paths to these problematic attributes.
 
 ## Notes
-- Templates are stored under `tak_templates/` and must match Excel concept types
+- Templates are stored under `tak_templates/` and must match Excel concept types (sheet names)
 - The generated XMLs are validated using the schema provided in ValidatorConfig.SCHEMA_PATH
 
 ## GIT Commit Tips
