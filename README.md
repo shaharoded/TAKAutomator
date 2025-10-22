@@ -106,6 +106,8 @@ automator.run(test_mode=True)
 | **Pattern** *(future)* | Composition of states/events/contexts/trends in specific order or logic. | Existing TAKs (as building blocks). | Yes (composable) | You need multi-step constructs (e.g., “hypotension despite fluids”, “rebound hyperglycemia”). | Temporal relations, sequence windows, logical operators. | “DKA_PATTERN”: Ketones high + glucose high + bicarbonate low with overlap. |
 | **Scenario** *(future)* | High-level clinical storyline comprising multiple patterns and contexts. | Patterns + contexts + events. | Yes (long horizon) | You need coarse-grained pathways (“perioperative course”, “sepsis workup”). | Phase boundaries, entry/exit criteria. |
 
+>> The Excel file has 2 additional sheets that are ignored by the automation: "not_included" and "flat_context", where the latter is a list of concepts that are not temporally important, are not a part of patterns, and should only be included for ML purposes (externally, as a 2D context vector) and not as a mediator output.
+
 ### Notes
 
 **Trends: “time-steady” vs “local persistence”**
@@ -116,14 +118,21 @@ automator.run(test_mode=True)
 - In the XML, time units are expressed with the **`granularity`** attribute (not `unit`).
 - Mental model: *time-steady* filters noisy blips; *local persistence* bridges sparse sampling.
 
+**Contexts and Patterns**
+- Certain contexts can replace the need for some states, like descriptions of "under influence".
+- Try to properly define the correct difference between `flat_context` and `context`.
+- If patterns are also calculated, you may want to move some of the `context` to the flat context vector, to avoid redundant tolkens describing the same thing. 
+
 **What the Mediator emits vs what we train on**
-- By default the Mediator emits **States**, **Trends**, **Contexts** and often suppresses **Events** and **Raw Concepts**.
+- By default the Mediator emits **States**, **Trends**, **Contexts**, **Patterns** and suppresses **Events** and **Raw Concepts**.
 - **Workflow we use**
   1. Define background/observational signals as **Context** concepts (e.g., “On statin”, “CKD present”).
   2. Allow **Patterns** to reference these Contexts during mining/validation.
   3. After mining, remove background Context intervals from the temporal output **unless** their timing is clinically useful, and copy their information into a static **[CTX]** vector (captured once in the first 24–48h) that we prepend to the model’s sequence.
   4. Keep time-bounded Contexts in the temporal stream only when their on/off timing is itself predictive (e.g., “On steroids (day 0–5)”).
-  5. Treat **Events** as true point occurrences for modeling; if the Mediator suppressed them, re-inject them as point events in the output so the model can align sequences to clinical actions (e.g., insulin bolus at T).
+  5. Treat **Events** as true point occurrences for modeling; if the Mediator suppressed them, re-inject them as point events in the output so the model can align sequences to clinical actions (e.g., Heart Attack at time T).
+  6. Remove `Same` value from **TRENDS**. Since every trend has a state as well, no need for these.
+  7. Be sure that nothing has an `End Time` after the discharge from hospital.
 
 **Practical tips**
 - Use Context → static **[CTX]** when the signal is relatively stable over the admission or mainly prognostic (e.g., baseline CKD, albumin in first 48h).
